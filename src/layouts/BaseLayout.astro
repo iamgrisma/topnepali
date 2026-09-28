@@ -22,6 +22,22 @@ const {
 
 const siteUrl = Astro.site?.toString() || 'https://topnepali.com';
 const canonical = canonicalUrl || new URL(Astro.url.pathname, siteUrl).toString();
+
+const globalCfEnv = typeof globalThis !== 'undefined' ? (globalThis as any).__CF_ENV__ : null;
+const gaId =
+  globalCfEnv?.PUBLIC_GA_ID ||
+  (typeof process !== 'undefined' && process.env?.PUBLIC_GA_ID) ||
+  'G-K2R0GSQE0M';
+
+const adsenseId =
+  globalCfEnv?.PUBLIC_ADSENSE_ID ||
+  (typeof process !== 'undefined' && process.env?.PUBLIC_ADSENSE_ID) ||
+  'ca-pub-5410507143596599';
+
+const gtmId =
+  globalCfEnv?.PUBLIC_GTM_ID ||
+  (typeof process !== 'undefined' && process.env?.PUBLIC_GTM_ID) ||
+  '';
 ---
 
 <!doctype html>
@@ -54,9 +70,65 @@ const canonical = canonicalUrl || new URL(Astro.url.pathname, siteUrl).toString(
 
     <!-- Preconnect -->
     <link rel="preconnect" href="https://objects.topnepali.com" crossorigin />
+    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
+    <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin />
 
     <!-- Color Scheme & Light Theme -->
     <meta name="color-scheme" content="light" />
+
+    <!-- Google Analytics (GA4) -->
+    {gaId && (
+      <>
+        <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}></script>
+        <script is:inline define:vars={{ gaId }}>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', gaId);
+        </script>
+      </>
+    )}
+
+    <!-- Google AdSense -->
+    {adsenseId && (
+      <script
+        is:inline
+        async
+        crossorigin="anonymous"
+        src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseId}`}
+      ></script>
+    )}
+
+    <!-- Google Tag Manager (Optional) -->
+    {gtmId && (
+      <script is:inline define:vars={{ gtmId }}>
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer',gtmId);
+      </script>
+    )}
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": type === 'article' ? 'NewsArticle' : 'WebSite',
+      "name": title,
+      "headline": title,
+      "description": description,
+      "url": canonical,
+      ...(image ? { "image": [image] } : {}),
+      "publisher": {
+        "@type": "Organization",
+        "name": "Top Nepali",
+        "url": "https://topnepali.com",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png"
+        }
+      }
+    })} />
 
     <style is:global>
       @import "tailwindcss";
