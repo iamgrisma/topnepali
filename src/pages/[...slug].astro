@@ -67,22 +67,22 @@ const currentUrl = Astro.url.href;
 {(!post && !page) ? (
   <BaseLayout title="404 — Page Not Found | Top Nepali" description="The page you were looking for could not be found.">
     <div class="max-w-[800px] mx-auto px-4 py-20 text-center">
-      <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4 text-slate-400">
+      <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4 text-slate-400">
         <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10" />
           <line x1="12" y1="8" x2="12" y2="12" />
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
       </div>
-      <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">404 — Page Not Found</h1>
-      <p class="text-slate-600 dark:text-slate-400 text-sm max-w-md mx-auto mb-6">
+      <h1 class="text-3xl font-extrabold text-slate-900 mb-2">404 — Page Not Found</h1>
+      <p class="text-slate-600 text-sm max-w-md mx-auto mb-6">
         The article or page you requested could not be located in the TopNepali digital archive.
       </p>
       <div class="flex items-center justify-center gap-4">
-        <a href="/" class="px-5 py-2.5 bg-indigo-900 dark:bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-800 transition">
+        <a href="/" class="px-5 py-2.5 bg-indigo-900 text-white rounded-lg text-xs font-semibold hover:bg-indigo-800 transition">
           Return to Homepage
         </a>
-        <a href="/search" class="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold hover:bg-slate-50 transition">
+        <a href="/search" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50 transition">
           Search Articles
         </a>
       </div>
@@ -99,17 +99,17 @@ const currentUrl = Astro.url.href;
       
       <!-- Breadcrumb Navigation -->
       <nav class="flex items-center gap-2 text-xs text-slate-500 mb-6 flex-wrap" aria-label="Breadcrumb">
-        <a href="/" class="hover:text-indigo-600 dark:hover:text-indigo-400">Home</a>
+        <a href="/" class="hover:text-indigo-600">Home</a>
         <span>/</span>
         {primaryCategory && (
           <>
-            <a href={`/category/${primaryCategory.slug}`} class="hover:text-indigo-600 dark:hover:text-indigo-400">
+            <a href={`/category/${primaryCategory.slug}`} class="hover:text-indigo-600">
               {primaryCategory.name}
             </a>
             <span>/</span>
           </>
         )}
-        <span class="text-slate-800 dark:text-slate-200 font-medium truncate max-w-xs sm:max-w-md">
+        <span class="text-slate-800 font-medium truncate max-w-xs sm:max-w-md">
           {title}
         </span>
       </nav>
@@ -117,14 +117,14 @@ const currentUrl = Astro.url.href;
       <div class="flex flex-col lg:flex-row gap-8 items-start">
         
         <!-- Primary Article Container -->
-        <article class="w-full lg:w-[68%] min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs p-5 sm:p-8">
+        <article class="w-full lg:w-[68%] min-w-0 bg-white rounded-xl border border-slate-200 shadow-2xs p-5 sm:p-8">
           
           <!-- Category Badge -->
           {primaryCategory && (
             <div class="mb-3">
               <a
                 href={`/category/${primaryCategory.slug}`}
-                class="inline-block text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-md hover:bg-indigo-100 transition"
+                class="inline-block text-[11px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md hover:bg-indigo-100 transition"
               >
                 {primaryCategory.name}
               </a>
@@ -132,28 +132,28 @@ const currentUrl = Astro.url.href;
           )}
 
           <!-- Headline -->
-          <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white leading-tight mb-4 tracking-tight">
+          <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight mb-4 tracking-tight">
             {title}
           </h1>
 
           <!-- Meta Bar (Author, Date, Reading Time) -->
           {isArticle && author && post && (
-            <div class="flex flex-wrap items-center justify-between gap-4 py-3.5 mb-6 border-y border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+            <div class="flex flex-wrap items-center justify-between gap-4 py-3.5 mb-6 border-y border-slate-100 text-xs text-slate-500">
               <div class="flex items-center gap-3">
                 {author.avatar ? (
                   <img
                     src={author.avatar}
                     alt={author.name}
-                    class="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                    class="w-9 h-9 rounded-full object-cover border border-slate-200"
                     loading="lazy"
                   />
                 ) : (
-                  <div class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold">
+                  <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
                     {author.name.charAt(0)}
                   </div>
                 )}
                 <div>
-                  <span class="font-semibold text-slate-900 dark:text-slate-200 block">
+                  <span class="font-semibold text-slate-900 block">
                     {author.name}
                   </span>
                   <div class="flex items-center gap-2 text-[11px] text-slate-400">
@@ -169,7 +169,7 @@ const currentUrl = Astro.url.href;
                 <button
                   type="button"
                   id="share-copy-btn"
-                  class="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
+                  class="px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
                   data-url={currentUrl}
                 >
                   <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -185,7 +185,7 @@ const currentUrl = Astro.url.href;
 
           <!-- Featured Media Banner -->
           {featuredImg && (
-            <figure class="mb-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+            <figure class="mb-8 rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
               <img
                 src={featuredImg.url}
                 alt={featuredImg.alt}
@@ -205,7 +205,7 @@ const currentUrl = Astro.url.href;
 
           <!-- Tags List -->
           {tags.length > 0 && (
-            <div class="pt-6 border-t border-slate-100 dark:border-slate-800 mb-8">
+            <div class="pt-6 border-t border-slate-100 mb-8">
               <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2.5">
                 Related Tags
               </span>
@@ -213,7 +213,7 @@ const currentUrl = Astro.url.href;
                 {tags.map((t) => (
                   <a
                     href={`/tag/${t.slug}`}
-                    class="px-2.5 py-1 text-xs rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                    class="px-2.5 py-1 text-xs rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
                   >
                     #{t.name}
                   </a>
@@ -224,24 +224,24 @@ const currentUrl = Astro.url.href;
 
           <!-- Author Bio Box -->
           {author && isArticle && (
-            <div class="p-5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex items-start gap-4 mb-8">
+            <div class="p-5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-start gap-4 mb-8">
               {author.avatar ? (
                 <img
                   src={author.avatar}
                   alt={author.name}
-                  class="w-12 h-12 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700"
+                  class="w-12 h-12 rounded-full object-cover shrink-0 border border-slate-200"
                   loading="lazy"
                 />
               ) : (
-                <div class="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 font-bold flex items-center justify-center shrink-0">
+                <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center shrink-0">
                   {author.name.charAt(0)}
                 </div>
               )}
               <div>
-                <h3 class="font-bold text-sm text-slate-900 dark:text-white mb-1">
+                <h3 class="font-bold text-sm text-slate-900 mb-1">
                   Written by {author.name}
                 </h3>
-                <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                <p class="text-xs text-slate-600 leading-relaxed">
                   {author.description || 'Contributing editorial writer at Top Nepali covering national updates, education routines, and civic information.'}
                 </p>
               </div>
@@ -250,8 +250,8 @@ const currentUrl = Astro.url.href;
 
           <!-- Related Posts Section -->
           {relatedPosts.length > 0 && (
-            <div class="pt-8 border-t border-slate-100 dark:border-slate-800">
-              <h3 class="font-bold text-base text-slate-900 dark:text-white mb-4">
+            <div class="pt-8 border-t border-slate-100">
+              <h3 class="font-bold text-base text-slate-900 mb-4">
                 You May Also Like
               </h3>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -260,10 +260,10 @@ const currentUrl = Astro.url.href;
                   return (
                     <a
                       href={`/${rel.slug}`}
-                      class="group block p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-indigo-400 transition"
+                      class="group block p-3 rounded-lg border border-slate-100 hover:border-indigo-400 transition"
                     >
                       {relImg ? (
-                        <div class="aspect-video rounded-md overflow-hidden bg-slate-100 dark:bg-slate-800 mb-2">
+                        <div class="aspect-video rounded-md overflow-hidden bg-slate-100 mb-2">
                           <img
                             src={relImg.url}
                             alt={relImg.alt}
@@ -272,7 +272,7 @@ const currentUrl = Astro.url.href;
                           />
                         </div>
                       ) : null}
-                      <h4 class="font-semibold text-xs text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 line-clamp-2 leading-snug">
+                      <h4 class="font-semibold text-xs text-slate-800 group-hover:text-indigo-600 line-clamp-2 leading-snug">
                         {rel.title.rendered}
                       </h4>
                       <time class="text-[10px] text-slate-400 block mt-1">

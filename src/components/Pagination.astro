@@ -114,22 +114,10 @@ for (let i = 1; i <= totalPages; i++) {
     transition: all 0.15s ease;
   }
 
-  :global(.dark) .page-btn {
-    background: #0f172a;
-    border-color: #1e293b;
-    color: #cbd5e1;
-  }
-
   .page-btn:not(.disabled):hover {
     background: #f8fafc;
     border-color: #cbd5e1;
     color: #21138a;
-  }
-
-  :global(.dark) .page-btn:not(.disabled):hover {
-    background: #1e293b;
-    border-color: #334155;
-    color: #60a5fa;
   }
 
   .page-btn.disabled {
@@ -159,32 +147,15 @@ for (let i = 1; i <= totalPages; i++) {
     transition: all 0.12s ease;
   }
 
-  :global(.dark) .page-number {
-    background: #0f172a;
-    border-color: #1e293b;
-    color: #cbd5e1;
-  }
-
   .page-number:hover {
     background: #f8fafc;
     color: #21138a;
     border-color: #cbd5e1;
   }
 
-  :global(.dark) .page-number:hover {
-    background: #1e293b;
-    color: #60a5fa;
-  }
-
   .page-number.active {
     background: #21138a;
     border-color: #21138a;
-    color: #ffffff;
-  }
-
-  :global(.dark) .page-number.active {
-    background: #2563eb;
-    border-color: #2563eb;
     color: #ffffff;
   }
 

@@ -13,11 +13,12 @@ const DEFAULT_WP_URL = 'https://topnepali.com';
 export function getWpBaseUrl(): string {
   const globalCfEnv = typeof globalThis !== 'undefined' ? (globalThis as any).__CF_ENV__ : null;
   const envUrl =
+    globalCfEnv?.WORDPRESS_URL ||
+    globalCfEnv?.WP_URL ||
     globalCfEnv?.URL ||
     globalCfEnv?.SITE_URL ||
-    globalCfEnv?.WORDPRESS_URL ||
-    (typeof process !== 'undefined' && (process.env?.URL || process.env?.SITE_URL || process.env?.WORDPRESS_URL)) ||
-    (typeof import.meta !== 'undefined' && ((import.meta as any).env?.URL || (import.meta as any).env?.SITE_URL || (import.meta as any).env?.WORDPRESS_URL));
+    (typeof process !== 'undefined' && (process.env?.WORDPRESS_URL || process.env?.WP_URL || process.env?.URL || process.env?.SITE_URL)) ||
+    (typeof import.meta !== 'undefined' && ((import.meta as any).env?.WORDPRESS_URL || (import.meta as any).env?.WP_URL || (import.meta as any).env?.URL || (import.meta as any).env?.SITE_URL));
   const raw = envUrl || DEFAULT_WP_URL;
   return raw.replace(/\/+$/, '');
 }

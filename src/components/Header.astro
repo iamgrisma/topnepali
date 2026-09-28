@@ -143,75 +143,61 @@ const navItems = [
         aria-label="Toggle navigation menu"
         aria-expanded="false"
       >
-        <svg class="hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg id="mobile-hamburger-icon" class="hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="3" y1="12" x2="21" y2="12" />
           <line x1="3" y1="6" x2="21" y2="6" />
           <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+        <svg id="mobile-close-icon" class="hamburger-icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
       </button>
     </div>
   </div>
 
-  <!-- Mobile Off-Canvas Drawer -->
-  <div id="mobile-drawer" class="mobile-drawer hidden">
-    <div id="mobile-drawer-backdrop" class="drawer-backdrop"></div>
-    <div class="drawer-content">
-      <div class="drawer-header">
-        <div class="flex items-center gap-2">
-          <img
-            src="https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png"
-            alt="Top Nepali"
-            class="w-7 h-7 rounded"
-          />
-          <span class="font-bold text-slate-900 dark:text-white text-sm">Top Nepali</span>
-        </div>
-        <button type="button" id="mobile-drawer-close" class="drawer-close-btn" aria-label="Close menu">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      </div>
-
-      <!-- Quick Search in Mobile Drawer -->
-      <div class="p-3 border-b border-slate-100 dark:border-slate-800">
-        <form action="/search" method="get" class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-lg">
-          <svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="search"
-            name="q"
-            placeholder="Search posts..."
-            class="w-full bg-transparent text-xs text-slate-800 dark:text-slate-100 outline-none"
-          />
-        </form>
-      </div>
-
-      <nav class="drawer-nav">
-        <ul class="drawer-menu">
-          {navItems.map((item) => (
-            <li class="drawer-item">
-              <a href={item.url} class="drawer-link">
-                <span>{item.name}</span>
-              </a>
-              {item.children && (
-                <ul class="drawer-submenu">
-                  {item.children.map((sub) => (
-                    <li>
-                      <a href={sub.url} class="drawer-sublink">
-                        {sub.name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          ))}
-        </ul>
-      </nav>
+  <!-- Mobile Dropdown Menu (Inline below header, zero stuck blur backdrop) -->
+  <div id="mobile-menu" class="mobile-dropdown-panel hidden" aria-label="Mobile Navigation">
+    <!-- Quick Search in Mobile Menu -->
+    <div class="mobile-search-section">
+      <form action="/search" method="get" class="mobile-search-form">
+        <svg class="w-4 h-4 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          type="search"
+          name="q"
+          placeholder="Search articles, routines, guides..."
+          class="mobile-search-input"
+          autocomplete="off"
+        />
+      </form>
     </div>
+
+    <!-- Navigation Items -->
+    <nav class="mobile-nav-body">
+      <ul class="mobile-nav-list">
+        {navItems.map((item) => (
+          <li class="mobile-nav-item">
+            <a href={item.url} class={`mobile-nav-link ${currentPath === item.url ? 'active' : ''}`}>
+              <span>{item.name}</span>
+            </a>
+            {item.children && (
+              <ul class="mobile-subnav-list">
+                {item.children.map((sub) => (
+                  <li>
+                    <a href={sub.url} class="mobile-subnav-link">
+                      <span>{sub.name}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ul>
+    </nav>
   </div>
 </header>
 
@@ -222,12 +208,6 @@ const navItems = [
     position: sticky;
     top: 0;
     z-index: 1000;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-  }
-
-  :global(.dark) .site-header {
-    background: #0f172a;
-    border-bottom-color: #1e293b;
   }
 
   .header-container {
@@ -272,10 +252,6 @@ const navItems = [
     color: #21138a;
     letter-spacing: -0.02em;
     line-height: 1.15;
-  }
-
-  :global(.dark) .site-title {
-    color: #60a5fa;
   }
 
   .site-tagline {
@@ -330,20 +306,10 @@ const navItems = [
     transition: all 0.15s ease;
   }
 
-  :global(.dark) .nav-link {
-    color: #cbd5e1;
-  }
-
   .nav-link:hover,
   .nav-item:hover > .nav-link {
     color: #21138a;
     background: #f1f5f9;
-  }
-
-  :global(.dark) .nav-link:hover,
-  :global(.dark) .nav-item:hover > .nav-link {
-    color: #93c5fd;
-    background: #1e293b;
   }
 
   .nav-link.active {
@@ -382,12 +348,6 @@ const navItems = [
     z-index: 1000;
   }
 
-  :global(.dark) .dropdown-menu {
-    background: #0f172a;
-    border-color: #1e293b;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-  }
-
   .nav-item:hover .dropdown-menu {
     opacity: 1;
     visibility: visible;
@@ -405,19 +365,10 @@ const navItems = [
     transition: all 0.12s ease;
   }
 
-  :global(.dark) .dropdown-item {
-    color: #cbd5e1;
-  }
-
   .dropdown-item:hover {
     background: #f8fafc;
     color: #21138a;
     padding-left: 15px;
-  }
-
-  :global(.dark) .dropdown-item:hover {
-    background: #1e293b;
-    color: #93c5fd;
   }
 
   /* Header Actions */
@@ -446,19 +397,10 @@ const navItems = [
     color: #0f172a;
   }
 
-  :global(.dark) .action-btn {
-    color: #94a3b8;
-  }
-
-  :global(.dark) .action-btn:hover {
-    background: #1e293b;
-    color: #f8fafc;
-  }
-
   .action-icon,
   .hamburger-icon {
-    width: 19px;
-    height: 19px;
+    width: 20px;
+    height: 20px;
   }
 
   .mobile-menu-btn {
@@ -471,101 +413,86 @@ const navItems = [
     }
   }
 
-  /* Mobile Drawer */
-  .mobile-drawer {
-    position: fixed;
-    inset: 0;
-    z-index: 100000;
+  /* Mobile Dropdown Panel */
+  .mobile-dropdown-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border-bottom: 2px solid #21138a;
+    box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.18);
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 1001;
   }
 
-  .mobile-drawer.hidden {
+  .mobile-dropdown-panel.hidden {
     display: none;
   }
 
-  .drawer-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.5);
-    backdrop-filter: blur(4px);
+  .mobile-search-section {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    background: #f8fafc;
   }
 
-  .drawer-content {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 290px;
-    max-width: 85vw;
-    background: #ffffff;
-    box-shadow: -10px 0 25px -5px rgba(0, 0, 0, 0.2);
-    display: flex;
-    flex-direction: column;
-    z-index: 100001;
-    overflow-y: auto;
-  }
-
-  :global(.dark) .drawer-content {
-    background: #0f172a;
-    border-left: 1px solid #1e293b;
-  }
-
-  .drawer-header {
+  .mobile-search-form {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px;
-    border-bottom: 1px solid #f1f5f9;
+    gap: 8px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 7px 12px;
   }
 
-  :global(.dark) .drawer-header {
-    border-bottom-color: #1e293b;
-  }
-
-  .drawer-close-btn {
+  .mobile-search-input {
+    width: 100%;
     background: transparent;
     border: none;
-    color: #64748b;
-    padding: 6px;
-    border-radius: 6px;
-    cursor: pointer;
+    outline: none;
+    font-size: 13px;
+    color: #1e293b;
   }
 
-  .drawer-nav {
-    padding: 12px 10px;
+  .mobile-nav-body {
+    padding: 12px 16px 24px 16px;
   }
 
-  .drawer-menu {
+  .mobile-nav-list {
     list-style: none;
     margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
   }
 
-  .drawer-link {
+  .mobile-nav-item {
+    border-bottom: 1px solid #f8fafc;
+    padding-bottom: 4px;
+  }
+
+  .mobile-nav-link {
     display: block;
-    padding: 9px 12px;
-    font-size: 14px;
+    padding: 8px 10px;
+    font-size: 14.5px;
     font-weight: 700;
     color: #1e293b;
     text-decoration: none;
-    border-radius: 8px;
+    border-radius: 6px;
+    transition: background-color 0.15s ease;
   }
 
-  :global(.dark) .drawer-link {
-    color: #f1f5f9;
-  }
-
-  .drawer-link:hover {
+  .mobile-nav-link:hover,
+  .mobile-nav-link.active {
+    color: #21138a;
     background: #f1f5f9;
   }
 
-  :global(.dark) .drawer-link:hover {
-    background: #1e293b;
-  }
-
-  .drawer-submenu {
+  .mobile-subnav-list {
     list-style: none;
     margin: 2px 0 6px 12px;
     padding-left: 10px;
@@ -575,58 +502,76 @@ const navItems = [
     gap: 2px;
   }
 
-  :global(.dark) .drawer-submenu {
-    border-left-color: #334155;
-  }
-
-  .drawer-sublink {
+  .mobile-subnav-link {
     display: block;
     padding: 5px 8px;
     font-size: 13px;
     color: #64748b;
     text-decoration: none;
-    border-radius: 6px;
+    border-radius: 4px;
+    transition: all 0.12s ease;
   }
 
-  :global(.dark) .drawer-sublink {
-    color: #94a3b8;
-  }
-
-  .drawer-sublink:hover {
+  .mobile-subnav-link:hover {
     color: #21138a;
     background: #f8fafc;
-  }
-
-  :global(.dark) .drawer-sublink:hover {
-    color: #93c5fd;
-    background: #1e293b;
+    padding-left: 12px;
   }
 </style>
 
 <script>
-  function setupMobileDrawer() {
+  function setupMobileMenu() {
     const toggle = document.getElementById('mobile-drawer-toggle');
-    const drawer = document.getElementById('mobile-drawer');
-    const backdrop = document.getElementById('mobile-drawer-backdrop');
-    const closeBtn = document.getElementById('mobile-drawer-close');
+    const menu = document.getElementById('mobile-menu');
+    const hamburger = document.getElementById('mobile-hamburger-icon');
+    const close = document.getElementById('mobile-close-icon');
 
-    function openDrawer() {
-      if (!drawer) return;
-      drawer.classList.remove('hidden');
+    if (!toggle || !menu) return;
+
+    function openMenu() {
+      menu?.classList.remove('hidden');
       toggle?.setAttribute('aria-expanded', 'true');
+      hamburger?.classList.add('hidden');
+      close?.classList.remove('hidden');
     }
 
-    function closeDrawer() {
-      if (!drawer) return;
-      drawer.classList.add('hidden');
+    function closeMenu() {
+      menu?.classList.add('hidden');
       toggle?.setAttribute('aria-expanded', 'false');
+      hamburger?.classList.remove('hidden');
+      close?.classList.add('hidden');
     }
 
-    toggle?.addEventListener('click', openDrawer);
-    backdrop?.addEventListener('click', closeDrawer);
-    closeBtn?.addEventListener('click', closeDrawer);
+    function toggleMenu(e?: Event) {
+      if (e) e.stopPropagation();
+      const isHidden = menu?.classList.contains('hidden');
+      if (isHidden) {
+        openMenu();
+      } else {
+        closeMenu();
+      }
+    }
+
+    toggle.onclick = toggleMenu;
+
+    // Close when clicking any link inside
+    menu.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => {
+        closeMenu();
+      });
+    });
+
+    // Close on outside tap/click
+    document.addEventListener('click', (e) => {
+      if (!menu.classList.contains('hidden')) {
+        const target = e.target as HTMLElement;
+        if (!menu.contains(target) && !toggle.contains(target)) {
+          closeMenu();
+        }
+      }
+    });
   }
 
-  setupMobileDrawer();
-  document.addEventListener('astro:page-load', setupMobileDrawer);
+  setupMobileMenu();
+  document.addEventListener('astro:page-load', setupMobileMenu);
 </script>

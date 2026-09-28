@@ -105,6 +105,7 @@ binding = "ASSETS"
 
 [vars]
 URL = "https://topnepali.com"
+WORDPRESS_URL = "https://wp.topnepali.com"
 REVALIDATE_SECRET = "topnepali_revalidate_secure_token"
 `;
   fs.writeFileSync(wranglerTomlFile, tomlContent);

@@ -57,7 +57,7 @@ const excerpt = stripHtml(post.excerpt?.rendered || '');
 
     <div class="card-meta">
       <span class="meta-author">
-        by <span class="font-medium text-slate-700 dark:text-slate-300">{author.name}</span>
+        by <span class="font-medium text-slate-700">{author.name}</span>
       </span>
       <span class="meta-dot">&bull;</span>
       <time datetime={post.date} class="meta-date">
@@ -97,21 +97,10 @@ const excerpt = stripHtml(post.excerpt?.rendered || '');
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   }
 
-  :global(.dark) .post-card {
-    background: #0f172a;
-    border-color: #1e293b;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
-  }
-
   .post-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08);
     border-color: #cbd5e1;
-  }
-
-  :global(.dark) .post-card:hover {
-    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.5);
-    border-color: #334155;
   }
 
   .card-media-link {
@@ -123,10 +112,6 @@ const excerpt = stripHtml(post.excerpt?.rendered || '');
     aspect-ratio: 16 / 9;
     overflow: hidden;
     background: #f1f5f9;
-  }
-
-  :global(.dark) .card-media-wrapper {
-    background: #1e293b;
   }
 
   .card-img {
@@ -165,11 +150,6 @@ const excerpt = stripHtml(post.excerpt?.rendered || '');
     transition: background 0.12s ease;
   }
 
-  :global(.dark) .category-badge {
-    color: #93c5fd;
-    background: #1e3a8a;
-  }
-
   .category-badge:hover {
     background: #dbeafe;
   }
@@ -186,16 +166,8 @@ const excerpt = stripHtml(post.excerpt?.rendered || '');
     transition: color 0.15s ease;
   }
 
-  :global(.dark) .title-link {
-    color: #f8fafc;
-  }
-
   .title-link:hover {
     color: #21138a;
-  }
-
-  :global(.dark) .title-link:hover {
-    color: #60a5fa;
   }
 
   .card-meta {
@@ -206,10 +178,6 @@ const excerpt = stripHtml(post.excerpt?.rendered || '');
     font-size: 12px;
     color: #64748b;
     margin-bottom: 12px;
-  }
-
-  :global(.dark) .card-meta {
-    color: #94a3b8;
   }
 
   .meta-dot {
@@ -224,20 +192,12 @@ const excerpt = stripHtml(post.excerpt?.rendered || '');
     flex: 1;
   }
 
-  :global(.dark) .card-excerpt {
-    color: #94a3b8;
-  }
-
   .card-footer {
     display: flex;
     align-items: center;
     justify-content: flex-start;
     padding-top: 12px;
     border-top: 1px solid #f1f5f9;
-  }
-
-  :global(.dark) .card-footer {
-    border-top-color: #1e293b;
   }
 
   .read-more-link {
@@ -249,10 +209,6 @@ const excerpt = stripHtml(post.excerpt?.rendered || '');
     color: #21138a;
     text-decoration: none;
     transition: gap 0.15s ease;
-  }
-
-  :global(.dark) .read-more-link {
-    color: #60a5fa;
   }
 
   .read-more-link:hover {
