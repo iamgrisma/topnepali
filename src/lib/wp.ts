@@ -26,6 +26,22 @@ interface CacheEntry<T> {
 const cache = new Map<string, CacheEntry<any>>();
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 
+export function clearWpCache(pattern?: string): number {
+  if (!pattern) {
+    const size = cache.size;
+    cache.clear();
+    return size;
+  }
+  let cleared = 0;
+  for (const key of cache.keys()) {
+    if (key.includes(pattern)) {
+      cache.delete(key);
+      cleared++;
+    }
+  }
+  return cleared;
+}
+
 async function fetchWithCache<T>(url: string, headersInit?: Record<string, string>): Promise<{ data: T; headers: Headers }> {
   const now = Date.now();
   const cached = cache.get(url);
