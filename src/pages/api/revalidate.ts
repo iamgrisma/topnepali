@@ -85,35 +85,6 @@ export const POST: APIRoute = async ({ request, url }) => {
       console.warn('[revalidate] native caches.default purge warning:', err);
     }
 
-    // 6. Optional: Global Cloudflare Edge Purge API (only if ZONE_ID & API_TOKEN are set)
-    let cfPurgeResult = null;
-    const cfZoneId =
-      globalCfEnv?.CLOUDFLARE_ZONE_ID ||
-      process.env.CLOUDFLARE_ZONE_ID;
-    const cfApiToken =
-      globalCfEnv?.CLOUDFLARE_API_TOKEN ||
-      process.env.CLOUDFLARE_API_TOKEN;
-
-    if (cfZoneId && cfApiToken) {
-      try {
-        const cfRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${cfApiToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            files: purgeUrls,
-          }),
-        });
-
-        cfPurgeResult = await cfRes.json();
-      } catch (err: any) {
-        console.error('[revalidate] Cloudflare purge API error:', err);
-        cfPurgeResult = { error: err?.message || String(err) };
-      }
-    }
-
     return new Response(
       JSON.stringify({
         success: true,
@@ -122,7 +93,6 @@ export const POST: APIRoute = async ({ request, url }) => {
         type,
         internalCacheEntriesCleared: clearedCacheCount,
         purgedUrls: purgeUrls,
-        cloudflarePurge: cfPurgeResult ? (cfPurgeResult.success ? 'purged' : cfPurgeResult) : 'skipped (no CF token configured in env)',
       }),
       {
         status: 200,

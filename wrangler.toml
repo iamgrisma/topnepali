@@ -10,6 +10,5 @@ binding = "ASSETS"
 [vars]
 URL = "https://topnepali.com"
 WORDPRESS_URL = "https://wp.topnepali.com"
-REVALIDATE_SECRET = "topnepali_revalidate_secure_token"
 PUBLIC_GA_ID = "G-K2R0GSQE0M"
 PUBLIC_ADSENSE_ID = "ca-pub-5410507143596599"
