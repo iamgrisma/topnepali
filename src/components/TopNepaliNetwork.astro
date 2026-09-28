@@ -1,0 +1,302 @@
+---
+// TopNepaliNetwork.astro — Ultra-lightweight, zero-emoji, minimal DOM 9-dot launcher
+interface Props {
+  currentApp?: 'blog' | 'tools' | 'typing' | 'fonts' | 'share' | 'election' | 'constitution';
+}
+
+const { currentApp = 'blog' } = Astro.props;
+
+const networkApps = [
+  { id: 'blog', name: 'TopNepali', url: 'https://topnepali.com', icon: 'book' },
+  { id: 'tools', name: 'TopTools', url: 'https://topnepali.com/tools', icon: 'tool' },
+  { id: 'typing', name: 'Nepali Typing', url: 'https://typing.topnepali.com', icon: 'keyboard' },
+  { id: 'fonts', name: 'FontsDir', url: 'https://fonts.topnepali.com', icon: 'type' },
+  { id: 'share', name: 'Flashare', url: 'https://share.topnepali.com', icon: 'zap' },
+  { id: 'election', name: 'Election Nepal', url: 'https://election.topnepali.com', icon: 'landmark' },
+  { id: 'constitution', name: 'Constitution', url: 'https://constitution.topnepali.com', icon: 'scale' }
+];
+---
+
+<div class="topnepali-network-root">
+  <button
+    type="button"
+    class="network-trigger-btn"
+    aria-label="TopNepali Network Apps"
+    aria-expanded="false"
+    title="TopNepali Network"
+  >
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="5" cy="5" r="2.2" />
+      <circle cx="12" cy="5" r="2.2" />
+      <circle cx="19" cy="5" r="2.2" />
+      <circle cx="5" cy="12" r="2.2" />
+      <circle cx="12" cy="12" r="2.2" />
+      <circle cx="19" cy="12" r="2.2" />
+      <circle cx="5" cy="19" r="2.2" />
+      <circle cx="12" cy="19" r="2.2" />
+      <circle cx="19" cy="19" r="2.2" />
+    </svg>
+  </button>
+
+  <nav class="network-dropdown-panel hidden" aria-label="TopNepali Ecosystem">
+    <div class="panel-header">
+      <span class="panel-title">TopNepali Network</span>
+      <a href="https://topnepali.com" class="all-apps-link">Visit &rarr;</a>
+    </div>
+
+    <ul class="apps-list">
+      {networkApps.map((app) => {
+        const isCurrent = app.id === currentApp;
+        return (
+          <li>
+            <a href={app.url} class={`app-item ${isCurrent ? 'current' : ''}`}>
+              {app.icon === 'book' && (
+                <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                </svg>
+              )}
+              {app.icon === 'tool' && (
+                <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                </svg>
+              )}
+              {app.icon === 'keyboard' && (
+                <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="20" height="16" x="2" y="4" rx="2" />
+                  <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
+                </svg>
+              )}
+              {app.icon === 'type' && (
+                <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="4 7 4 4 20 4 20 7" />
+                  <line x1="9" x2="15" y1="20" y2="20" />
+                  <line x1="12" x2="12" y1="4" y2="20" />
+                </svg>
+              )}
+              {app.icon === 'zap' && (
+                <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+              )}
+              {app.icon === 'landmark' && (
+                <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="2" x2="22" y1="22" y2="22" />
+                  <line x1="6" x2="6" y1="18" />
+                  <line x1="10" x2="10" y1="18" />
+                  <line x1="14" x2="14" y1="18" />
+                  <line x1="18" x2="18" y1="18" />
+                  <polygon points="12 2 20 7 4 7" />
+                </svg>
+              )}
+              {app.icon === 'scale' && (
+                <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                  <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                  <path d="M7 21h10" />
+                  <path d="M12 3v18" />
+                  <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" />
+                </svg>
+              )}
+              <span class="item-name">{app.name}</span>
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  </nav>
+</div>
+
+<style>
+  .topnepali-network-root {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .network-trigger-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: #4b5563;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .network-trigger-btn:hover {
+    background: #f1f5f9;
+    color: #111827;
+  }
+
+  :global(.dark) .network-trigger-btn {
+    color: #94a3b8;
+  }
+
+  :global(.dark) .network-trigger-btn:hover {
+    background: #1e293b;
+    color: #f8fafc;
+  }
+
+  .network-trigger-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .network-dropdown-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 220px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    padding: 6px;
+    z-index: 99999;
+  }
+
+  :global(.dark) .network-dropdown-panel {
+    background: #0f172a;
+    border-color: #1e293b;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  }
+
+  .network-dropdown-panel.hidden {
+    display: none;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px 8px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 4px;
+  }
+
+  :global(.dark) .panel-header {
+    border-bottom-color: #1e293b;
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+  }
+
+  :global(.dark) .panel-title {
+    color: #94a3b8;
+  }
+
+  .all-apps-link {
+    font-size: 11px;
+    font-weight: 600;
+    color: #2563eb;
+    text-decoration: none;
+  }
+
+  .all-apps-link:hover {
+    text-decoration: underline;
+  }
+
+  .apps-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .app-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.12s ease;
+  }
+
+  :global(.dark) .app-item {
+    color: #cbd5e1;
+  }
+
+  .app-item:hover {
+    background: #f8fafc;
+    color: #0f172a;
+  }
+
+  :global(.dark) .app-item:hover {
+    background: #1e293b;
+    color: #ffffff;
+  }
+
+  .app-item.current {
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 600;
+  }
+
+  :global(.dark) .app-item.current {
+    background: #1e3a8a;
+    color: #93c5fd;
+  }
+
+  .item-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    opacity: 0.8;
+  }
+</style>
+
+<script>
+  function setupNetworkDropdown() {
+    const roots = document.querySelectorAll('.topnepali-network-root');
+    roots.forEach((root) => {
+      const btn = root.querySelector('.network-trigger-btn');
+      const panel = root.querySelector('.network-dropdown-panel');
+      if (!btn || !panel) return;
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = !panel.classList.contains('hidden');
+        if (isOpen) {
+          panel.classList.add('hidden');
+          btn.setAttribute('aria-expanded', 'false');
+        } else {
+          // Close others
+          document.querySelectorAll('.network-dropdown-panel').forEach(p => p.classList.add('hidden'));
+          panel.classList.remove('hidden');
+          btn.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!(e.target as HTMLElement).closest('.topnepali-network-root')) {
+        document.querySelectorAll('.network-dropdown-panel').forEach(p => {
+          p.classList.add('hidden');
+        });
+        document.querySelectorAll('.network-trigger-btn').forEach(b => {
+          b.setAttribute('aria-expanded', 'false');
+        });
+      }
+    });
+  }
+
+  // Setup on page load and client transitions
+  setupNetworkDropdown();
+  document.addEventListener('astro:page-load', setupNetworkDropdown);
+</script>

@@ -1,0 +1,196 @@
+---
+// Pagination.astro — Accessible, clean pagination control without URL redirects
+interface Props {
+  currentPage: number;
+  totalPages: number;
+  baseUrl: string; // e.g. "/" or "/category/education"
+  searchParams?: Record<string, string>;
+}
+
+const { currentPage, totalPages, baseUrl, searchParams = {} } = Astro.props;
+
+if (totalPages <= 1) return null;
+
+function buildPageUrl(page: number): string {
+  const params = new URLSearchParams(searchParams);
+  if (page > 1) {
+    params.set('page', String(page));
+  } else {
+    params.delete('page');
+  }
+  const qs = params.toString();
+  return qs ? `${baseUrl}?${qs}` : baseUrl;
+}
+
+// Generate compact window of page numbers
+const pages: (number | 'ellipsis')[] = [];
+const delta = 2;
+for (let i = 1; i <= totalPages; i++) {
+  if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+    pages.push(i);
+  } else if (pages[pages.length - 1] !== 'ellipsis') {
+    pages.push('ellipsis');
+  }
+}
+---
+
+<nav class="pagination-nav" aria-label="Posts pagination">
+  <!-- Previous Button -->
+  {currentPage > 1 ? (
+    <a href={buildPageUrl(currentPage - 1)} class="page-btn prev-btn" aria-label="Go to previous page">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+      <span>Previous</span>
+    </a>
+  ) : (
+    <span class="page-btn prev-btn disabled" aria-disabled="true">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+      <span>Previous</span>
+    </span>
+  )}
+
+  <!-- Numbered Pages -->
+  <div class="page-numbers">
+    {pages.map((p) => {
+      if (p === 'ellipsis') {
+        return <span class="page-ellipsis">&hellip;</span>;
+      }
+      const isCurrent = p === currentPage;
+      return (
+        <a
+          href={buildPageUrl(p)}
+          class={`page-number ${isCurrent ? 'active' : ''}`}
+          aria-current={isCurrent ? 'page' : undefined}
+        >
+          {p}
+        </a>
+      );
+    })}
+  </div>
+
+  <!-- Next Button -->
+  {currentPage < totalPages ? (
+    <a href={buildPageUrl(currentPage + 1)} class="page-btn next-btn" aria-label="Go to next page">
+      <span>Next</span>
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    </a>
+  ) : (
+    <span class="page-btn next-btn disabled" aria-disabled="true">
+      <span>Next</span>
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    </span>
+  )}
+</nav>
+
+<style>
+  .pagination-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 36px;
+    padding: 16px 0;
+  }
+
+  .page-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  :global(.dark) .page-btn {
+    background: #0f172a;
+    border-color: #1e293b;
+    color: #cbd5e1;
+  }
+
+  .page-btn:not(.disabled):hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #21138a;
+  }
+
+  :global(.dark) .page-btn:not(.disabled):hover {
+    background: #1e293b;
+    border-color: #334155;
+    color: #60a5fa;
+  }
+
+  .page-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .page-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.12s ease;
+  }
+
+  :global(.dark) .page-number {
+    background: #0f172a;
+    border-color: #1e293b;
+    color: #cbd5e1;
+  }
+
+  .page-number:hover {
+    background: #f8fafc;
+    color: #21138a;
+    border-color: #cbd5e1;
+  }
+
+  :global(.dark) .page-number:hover {
+    background: #1e293b;
+    color: #60a5fa;
+  }
+
+  .page-number.active {
+    background: #21138a;
+    border-color: #21138a;
+    color: #ffffff;
+  }
+
+  :global(.dark) .page-number.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+  }
+
+  .page-ellipsis {
+    padding: 0 4px;
+    color: #94a3b8;
+    font-size: 14px;
+  }
+</style>

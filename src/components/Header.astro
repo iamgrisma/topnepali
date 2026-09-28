@@ -1,0 +1,632 @@
+---
+// Header.astro — Faithful replica of TopNepali header layout with dropdowns, 9-dot launcher, and mobile drawer
+import TopNepaliNetwork from './TopNepaliNetwork.astro';
+
+interface Props {
+  currentPath?: string;
+}
+
+const { currentPath = '/' } = Astro.props;
+
+const navItems = [
+  { name: 'Home', url: '/' },
+  {
+    name: 'Updates',
+    url: '/category/topnepali',
+    children: [
+      { name: 'TopNepali', url: '/category/topnepali' },
+      { name: 'General Knowledge', url: '/category/general-knowledge' },
+      { name: 'Biography', url: '/category/biography' }
+    ]
+  },
+  {
+    name: 'Education',
+    url: '/category/education',
+    children: [
+      { name: 'Exam Form', url: '/category/exam-form' },
+      { name: 'Exam Routines', url: '/category/exam-routines' },
+      { name: 'Bachelor 1st Year', url: '/category/bachelor-first-year-exam-routine' },
+      { name: 'Bachelor 2nd Year', url: '/category/bachelor-2nd-year' },
+      { name: 'MBS and MPA', url: '/category/mbs-and-mpa' }
+    ]
+  },
+  {
+    name: 'Loksewa',
+    url: '/category/loksewa',
+    children: [
+      { name: 'Exam Centers', url: '/category/exam-centers' },
+      { name: 'Exam Date', url: '/category/exam-date' },
+      { name: 'Finance & Banking', url: '/category/finance' }
+    ]
+  },
+  {
+    name: 'Tools',
+    url: 'https://topnepali.com/tools',
+    children: [
+      { name: 'AD to BS Converter', url: 'https://topnepali.com/nepali-date-converter' },
+      { name: 'Foreign Exchange Rates', url: 'https://topnepali.com/foreign-exchange-rates-for-nepali-currency' },
+      { name: 'Nepali Calendar', url: 'https://topnepali.com/nepali-calendar' },
+      { name: 'Nepali Rashifal', url: 'https://topnepali.com/nepali-rashifal-horoscope' },
+      { name: 'Nepali Typing Platform', url: 'https://typing.topnepali.com' }
+    ]
+  },
+  {
+    name: 'More',
+    url: '#',
+    children: [
+      { name: 'About Us', url: '/about-us' },
+      { name: 'Contact', url: '/contact' },
+      { name: 'Privacy Policy', url: '/privacy' },
+      { name: 'Terms & Conditions', url: '/terms-and-conditions' }
+    ]
+  }
+];
+---
+
+<header class="site-header">
+  <div class="header-container">
+    <!-- Branding / Logo -->
+    <div class="site-branding">
+      <a href="/" class="brand-link" rel="home">
+        <img
+          src="https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png"
+          alt="Top Nepali"
+          class="site-logo-img"
+          width="48"
+          height="48"
+          loading="eager"
+        />
+        <div class="brand-text">
+          <span class="site-title">Top Nepali</span>
+          <span class="site-tagline">Covering Top Nepali News, Updates, Educational Information</span>
+        </div>
+      </a>
+    </div>
+
+    <!-- Desktop Navigation -->
+    <nav class="desktop-nav" aria-label="Primary Navigation">
+      <ul class="nav-menu">
+        {navItems.map((item) => (
+          <li class={`nav-item ${item.children ? 'has-dropdown' : ''}`}>
+            <a
+              href={item.url}
+              class={`nav-link ${currentPath === item.url ? 'active' : ''}`}
+            >
+              <span>{item.name}</span>
+              {item.children && (
+                <svg class="dropdown-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              )}
+            </a>
+
+            {item.children && (
+              <ul class="dropdown-menu">
+                {item.children.map((sub) => (
+                  <li>
+                    <a href={sub.url} class="dropdown-item">
+                      {sub.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    <!-- Header Actions (Search, 9-dot launcher, Mobile hamburger) -->
+    <div class="header-actions">
+      <!-- Search Trigger Button -->
+      <button
+        type="button"
+        class="action-btn search-trigger"
+        data-trigger="search-modal"
+        aria-label="Open search dialog"
+        title="Search"
+      >
+        <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+      </button>
+
+      <!-- 9-Dot Ecosystem Launcher -->
+      <TopNepaliNetwork currentApp="blog" />
+
+      <!-- Mobile Menu Toggle Button -->
+      <button
+        type="button"
+        id="mobile-drawer-toggle"
+        class="action-btn mobile-menu-btn"
+        aria-label="Toggle navigation menu"
+        aria-expanded="false"
+      >
+        <svg class="hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Off-Canvas Drawer -->
+  <div id="mobile-drawer" class="mobile-drawer hidden">
+    <div id="mobile-drawer-backdrop" class="drawer-backdrop"></div>
+    <div class="drawer-content">
+      <div class="drawer-header">
+        <div class="flex items-center gap-2">
+          <img
+            src="https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png"
+            alt="Top Nepali"
+            class="w-7 h-7 rounded"
+          />
+          <span class="font-bold text-slate-900 dark:text-white text-sm">Top Nepali</span>
+        </div>
+        <button type="button" id="mobile-drawer-close" class="drawer-close-btn" aria-label="Close menu">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Quick Search in Mobile Drawer -->
+      <div class="p-3 border-b border-slate-100 dark:border-slate-800">
+        <form action="/search" method="get" class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-lg">
+          <svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            type="search"
+            name="q"
+            placeholder="Search posts..."
+            class="w-full bg-transparent text-xs text-slate-800 dark:text-slate-100 outline-none"
+          />
+        </form>
+      </div>
+
+      <nav class="drawer-nav">
+        <ul class="drawer-menu">
+          {navItems.map((item) => (
+            <li class="drawer-item">
+              <a href={item.url} class="drawer-link">
+                <span>{item.name}</span>
+              </a>
+              {item.children && (
+                <ul class="drawer-submenu">
+                  {item.children.map((sub) => (
+                    <li>
+                      <a href={sub.url} class="drawer-sublink">
+                        {sub.name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  :global(.dark) .site-header {
+    background: #0f172a;
+    border-bottom-color: #1e293b;
+  }
+
+  .header-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 16px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .site-branding {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .brand-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+  }
+
+  .site-logo-img {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    object-fit: contain;
+  }
+
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .site-title {
+    font-size: 19px;
+    font-weight: 800;
+    color: #21138a;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  :global(.dark) .site-title {
+    color: #60a5fa;
+  }
+
+  .site-tagline {
+    font-size: 10px;
+    color: #64748b;
+    font-weight: 500;
+    line-height: 1.2;
+    display: none;
+  }
+
+  @media (min-width: 1024px) {
+    .site-tagline {
+      display: block;
+    }
+  }
+
+  /* Desktop Nav */
+  .desktop-nav {
+    display: none;
+  }
+
+  @media (min-width: 880px) {
+    .desktop-nav {
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  .nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nav-item {
+    position: relative;
+  }
+
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #334155;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+  }
+
+  :global(.dark) .nav-link {
+    color: #cbd5e1;
+  }
+
+  .nav-link:hover,
+  .nav-item:hover > .nav-link {
+    color: #21138a;
+    background: #f1f5f9;
+  }
+
+  :global(.dark) .nav-link:hover,
+  :global(.dark) .nav-item:hover > .nav-link {
+    color: #93c5fd;
+    background: #1e293b;
+  }
+
+  .nav-link.active {
+    color: #21138a;
+    font-weight: 700;
+  }
+
+  .dropdown-caret {
+    width: 13px;
+    height: 13px;
+    opacity: 0.6;
+    transition: transform 0.15s ease;
+  }
+
+  .nav-item:hover .dropdown-caret {
+    transform: rotate(180deg);
+  }
+
+  /* Dropdown Menu */
+  .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 200px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    padding: 6px;
+    list-style: none;
+    margin: 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(6px);
+    transition: all 0.15s ease;
+    z-index: 1000;
+  }
+
+  :global(.dark) .dropdown-menu {
+    background: #0f172a;
+    border-color: #1e293b;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  }
+
+  .nav-item:hover .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .dropdown-item {
+    display: block;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.12s ease;
+  }
+
+  :global(.dark) .dropdown-item {
+    color: #cbd5e1;
+  }
+
+  .dropdown-item:hover {
+    background: #f8fafc;
+    color: #21138a;
+    padding-left: 15px;
+  }
+
+  :global(.dark) .dropdown-item:hover {
+    background: #1e293b;
+    color: #93c5fd;
+  }
+
+  /* Header Actions */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: #4b5563;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .action-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  :global(.dark) .action-btn {
+    color: #94a3b8;
+  }
+
+  :global(.dark) .action-btn:hover {
+    background: #1e293b;
+    color: #f8fafc;
+  }
+
+  .action-icon,
+  .hamburger-icon {
+    width: 19px;
+    height: 19px;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  @media (min-width: 880px) {
+    .mobile-menu-btn {
+      display: none;
+    }
+  }
+
+  /* Mobile Drawer */
+  .mobile-drawer {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+  }
+
+  .mobile-drawer.hidden {
+    display: none;
+  }
+
+  .drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+  }
+
+  .drawer-content {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 290px;
+    max-width: 85vw;
+    background: #ffffff;
+    box-shadow: -10px 0 25px -5px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    z-index: 100001;
+    overflow-y: auto;
+  }
+
+  :global(.dark) .drawer-content {
+    background: #0f172a;
+    border-left: 1px solid #1e293b;
+  }
+
+  .drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  :global(.dark) .drawer-header {
+    border-bottom-color: #1e293b;
+  }
+
+  .drawer-close-btn {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .drawer-nav {
+    padding: 12px 10px;
+  }
+
+  .drawer-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .drawer-link {
+    display: block;
+    padding: 9px 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e293b;
+    text-decoration: none;
+    border-radius: 8px;
+  }
+
+  :global(.dark) .drawer-link {
+    color: #f1f5f9;
+  }
+
+  .drawer-link:hover {
+    background: #f1f5f9;
+  }
+
+  :global(.dark) .drawer-link:hover {
+    background: #1e293b;
+  }
+
+  .drawer-submenu {
+    list-style: none;
+    margin: 2px 0 6px 12px;
+    padding-left: 10px;
+    border-left: 2px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  :global(.dark) .drawer-submenu {
+    border-left-color: #334155;
+  }
+
+  .drawer-sublink {
+    display: block;
+    padding: 5px 8px;
+    font-size: 13px;
+    color: #64748b;
+    text-decoration: none;
+    border-radius: 6px;
+  }
+
+  :global(.dark) .drawer-sublink {
+    color: #94a3b8;
+  }
+
+  .drawer-sublink:hover {
+    color: #21138a;
+    background: #f8fafc;
+  }
+
+  :global(.dark) .drawer-sublink:hover {
+    color: #93c5fd;
+    background: #1e293b;
+  }
+</style>
+
+<script>
+  function setupMobileDrawer() {
+    const toggle = document.getElementById('mobile-drawer-toggle');
+    const drawer = document.getElementById('mobile-drawer');
+    const backdrop = document.getElementById('mobile-drawer-backdrop');
+    const closeBtn = document.getElementById('mobile-drawer-close');
+
+    function openDrawer() {
+      if (!drawer) return;
+      drawer.classList.remove('hidden');
+      toggle?.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeDrawer() {
+      if (!drawer) return;
+      drawer.classList.add('hidden');
+      toggle?.setAttribute('aria-expanded', 'false');
+    }
+
+    toggle?.addEventListener('click', openDrawer);
+    backdrop?.addEventListener('click', closeDrawer);
+    closeBtn?.addEventListener('click', closeDrawer);
+  }
+
+  setupMobileDrawer();
+  document.addEventListener('astro:page-load', setupMobileDrawer);
+</script>

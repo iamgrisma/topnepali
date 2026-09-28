@@ -1,0 +1,198 @@
+---
+// Sidebar.astro — Right sidebar widgets matching GeneratePress / TopNepali blog layout
+import { getCategories, getRecentPosts, formatDate, getPostFeaturedImage } from '../lib/wp';
+
+interface Props {
+  excludePostId?: number;
+}
+
+const { excludePostId } = Astro.props;
+
+// Fetch live dynamic categories & recent posts
+const [categories, allRecent] = await Promise.all([
+  getCategories({ perPage: 12, hideEmpty: true }),
+  getRecentPosts(6),
+]);
+
+const recentPosts = allRecent.filter((p) => p.id !== excludePostId).slice(0, 5);
+---
+
+<aside class="site-sidebar" aria-label="Sidebar Widgets">
+  <!-- Widget 1: Search Form -->
+  <div class="sidebar-widget">
+    <h3 class="widget-title">Search</h3>
+    <form action="/search" method="get" class="search-widget-form">
+      <div class="relative flex items-center">
+        <input
+          type="search"
+          name="q"
+          placeholder="Search site..."
+          required
+          class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-3 pr-9 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-600 dark:focus:border-indigo-400 transition"
+        />
+        <button
+          type="submit"
+          class="absolute right-1.5 p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+          aria-label="Submit search"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Widget 2: Recent Posts -->
+  <div class="sidebar-widget">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="space-y-3">
+      {recentPosts.map((post) => {
+        const feat = getPostFeaturedImage(post);
+        return (
+          <article class="flex items-start gap-3 group">
+            {feat ? (
+              <a href={`/${post.slug}`} class="shrink-0 overflow-hidden rounded-md w-16 h-12 bg-slate-100 dark:bg-slate-800">
+                <img
+                  src={feat.url}
+                  alt={feat.alt}
+                  class="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                  loading="lazy"
+                />
+              </a>
+            ) : (
+              <div class="shrink-0 w-16 h-12 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                <svg class="w-5 h-5 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                </svg>
+              </div>
+            )}
+            <div class="flex-1 min-w-0">
+              <a
+                href={`/${post.slug}`}
+                class="font-semibold text-xs text-slate-800 dark:text-slate-200 line-clamp-2 leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition"
+              >
+                {post.title.rendered}
+              </a>
+              <time class="text-[11px] text-slate-400 dark:text-slate-500 block mt-1">
+                {formatDate(post.date)}
+              </time>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  </div>
+
+  <!-- Widget 3: Categories with counts -->
+  <div class="sidebar-widget">
+    <h3 class="widget-title">Categories</h3>
+    <ul class="space-y-1.5 text-xs">
+      {categories.map((cat) => (
+        <li>
+          <a
+            href={`/category/${cat.slug}`}
+            class="flex items-center justify-between py-1 px-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition group"
+          >
+            <span class="truncate">{cat.name}</span>
+            <span class="text-[11px] text-slate-400 group-hover:text-indigo-500 font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full shrink-0">
+              {cat.count}
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <!-- Widget 4: TopNepali Ecosystem Tools -->
+  <div class="sidebar-widget bg-gradient-to-br from-indigo-50/50 to-blue-50/30 dark:from-slate-800/40 dark:to-indigo-950/20 border-indigo-100/60 dark:border-indigo-900/40">
+    <h3 class="widget-title text-indigo-900 dark:text-indigo-300">TopNepali Tools</h3>
+    <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+      Fast, privacy-focused digital tools built specifically for Nepal.
+    </p>
+    <div class="grid grid-cols-2 gap-2 text-xs">
+      <a
+        href="https://typing.topnepali.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-indigo-500 text-slate-800 dark:text-slate-200 transition font-medium text-center shadow-2xs"
+      >
+        Nepali Typing
+      </a>
+      <a
+        href="https://fonts.topnepali.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-indigo-500 text-slate-800 dark:text-slate-200 transition font-medium text-center shadow-2xs"
+      >
+        Fonts Directory
+      </a>
+      <a
+        href="https://share.topnepali.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-indigo-500 text-slate-800 dark:text-slate-200 transition font-medium text-center shadow-2xs"
+      >
+        Flashare P2P
+      </a>
+      <a
+        href="https://election.topnepali.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-indigo-500 text-slate-800 dark:text-slate-200 transition font-medium text-center shadow-2xs"
+      >
+        Election Nepal
+      </a>
+      <a
+        href="https://constitution.topnepali.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="col-span-2 p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-indigo-500 text-slate-800 dark:text-slate-200 transition font-medium text-center shadow-2xs"
+      >
+        Nepal Constitution (2072)
+      </a>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .site-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .sidebar-widget {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  :global(.dark) .sidebar-widget {
+    background: #0f172a;
+    border-color: #1e293b;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  .widget-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #0f172a;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #21138a;
+    display: inline-block;
+  }
+
+  :global(.dark) .widget-title {
+    color: #f8fafc;
+    border-bottom-color: #60a5fa;
+  }
+</style>

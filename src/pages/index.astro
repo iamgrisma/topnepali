@@ -1,0 +1,87 @@
+---
+// index.astro — Dynamic SSR Homepage for TopNepali Headless WordPress
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import Sidebar from '../components/Sidebar.astro';
+import Pagination from '../components/Pagination.astro';
+import { getPosts, getSiteInfo } from '../lib/wp';
+
+// Parse query params for dynamic SSR pagination
+const pageParam = Astro.url.searchParams.get('page');
+const currentPage = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
+const perPage = 10;
+
+// Dynamic fetch directly from WordPress REST API (No static pre-generation needed)
+const [postsResult, siteInfo] = await Promise.all([
+  getPosts({ page: currentPage, perPage }),
+  getSiteInfo(),
+]);
+
+const { data: posts, total, totalPages } = postsResult;
+const isFirstPage = currentPage === 1;
+const featuredPost = isFirstPage && posts.length > 0 ? posts[0] : null;
+const streamPosts = isFirstPage ? posts.slice(1) : posts;
+---
+
+<BaseLayout
+  title={`${siteInfo.name} — Covering Top Nepali News, Updates & Educational Information`}
+  description={siteInfo.description}
+>
+  <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-8">
+    <div class="flex flex-col lg:flex-row gap-8 items-start">
+      
+      <!-- Primary Content Area (~68%) -->
+      <div class="w-full lg:w-[68%] min-w-0">
+        
+        <!-- Featured Lead Post (on Page 1) -->
+        {featuredPost && (
+          <section class="mb-8" aria-label="Featured Story">
+            <PostCard post={featuredPost} featured={true} />
+          </section>
+        )}
+
+        <!-- Section Title: Recently Published -->
+        <div class="flex items-center justify-between pb-3 mb-6 border-b-2 border-slate-200 dark:border-slate-800">
+          <h1 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-indigo-400"></span>
+            <span>{isFirstPage ? 'Recently Published' : `Articles — Page ${currentPage}`}</span>
+          </h1>
+          <span class="text-xs text-slate-500 font-mono">
+            {total > 0 ? `${total} Total Posts` : 'Latest Updates'}
+          </span>
+        </div>
+
+        <!-- Post Stream Grid -->
+        {streamPosts.length > 0 ? (
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {streamPosts.map((post) => (
+              <PostCard post={post} />
+            ))}
+          </div>
+        ) : (
+          <div class="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+            <p class="text-slate-600 dark:text-slate-400 text-sm">
+              No articles found on this page.
+            </p>
+            <a href="/" class="mt-3 inline-block text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+              Return to Homepage
+            </a>
+          </div>
+        )}
+
+        <!-- Dynamic Pagination -->
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          baseUrl="/"
+        />
+      </div>
+
+      <!-- Right Sidebar (~32%) -->
+      <div class="w-full lg:w-[32%] shrink-0">
+        <Sidebar excludePostId={featuredPost?.id} />
+      </div>
+
+    </div>
+  </div>
+</BaseLayout>
