@@ -95,15 +95,20 @@ if (fs.existsSync(serverWranglerJson)) {
 const wranglerTomlFile = path.join(rootDir, 'wrangler.toml');
 if (!fs.existsSync(wranglerTomlFile)) {
   const tomlContent = `name = "topnepali"
-main = "./dist/server/entry.mjs"
+main = "@astrojs/cloudflare/entrypoints/server"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]
 directory = "./dist/client"
+binding = "ASSETS"
+
+[vars]
+URL = "https://topnepali.com"
+REVALIDATE_SECRET = "topnepali_revalidate_secure_token"
 `;
   fs.writeFileSync(wranglerTomlFile, tomlContent);
-  console.log('[prepare-pages] Created default wrangler.toml');
+  console.log('[prepare-pages] Created default wrangler.toml with [vars]');
 }
 
 console.log('[prepare-pages] Cloudflare Pages/Worker bundle preparation complete!');

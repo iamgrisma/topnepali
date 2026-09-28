@@ -6,7 +6,9 @@ export const POST: APIRoute = async ({ request, url }) => {
     // 1. Authenticate webhook request
     const authHeader = request.headers.get('x-revalidate-secret') || request.headers.get('authorization');
     const secretFromQuery = url.searchParams.get('secret');
+    const globalCfEnv = typeof globalThis !== 'undefined' ? (globalThis as any).__CF_ENV__ : null;
     const configuredSecret =
+      globalCfEnv?.REVALIDATE_SECRET ||
       process.env.REVALIDATE_SECRET ||
       process.env.INTERNAL_API_SECRET ||
       'topnepali_revalidate_secure_token';
@@ -37,7 +39,13 @@ export const POST: APIRoute = async ({ request, url }) => {
     const clearedCacheCount = clearWpCache(slug || undefined);
 
     // 4. Determine URLs to purge from Cloudflare Global Edge CDN
-    const siteUrl = (process.env.SITE_URL || 'https://topnepali.com').replace(/\/+$/, '');
+    const siteUrl = (
+      globalCfEnv?.URL ||
+      globalCfEnv?.SITE_URL ||
+      process.env.URL ||
+      process.env.SITE_URL ||
+      'https://topnepali.com'
+    ).replace(/\/+$/, '');
     const purgeUrls: string[] = [];
 
     // Always purge the homepage because latest post feeds change on update
