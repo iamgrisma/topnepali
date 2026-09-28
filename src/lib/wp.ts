@@ -23,13 +23,13 @@ export function getWpBaseUrl(): string {
   return raw.replace(/\/+$/, '');
 }
 
-// In-memory cache for SSR performance (60 seconds TTL for fast updates without static build rebuilds)
+// In-memory cache for SSR performance (24 hours TTL, purged on-demand via /api/revalidate)
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
 }
 const cache = new Map<string, CacheEntry<any>>();
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours (cleared via clearWpCache on webhook)
 
 export function clearWpCache(pattern?: string): number {
   if (!pattern) {

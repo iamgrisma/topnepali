@@ -24,13 +24,13 @@ if (!rawSlug) {
 // Clean slug (handles any trailing slash without HTTP redirect)
 const cleanSlug = rawSlug.replace(/^\/+|\/+$/g, '');
 
-// Fetch Post or Page in parallel or cascade
-const post = await getPostBySlug(cleanSlug);
-let page = null;
-
-if (!post) {
-  page = await getPageBySlug(cleanSlug);
-}
+// Fetch Post or Page in parallel (eliminates sequential API waterfall)
+const [postResult, pageResult] = await Promise.allSettled([
+  getPostBySlug(cleanSlug),
+  getPageBySlug(cleanSlug),
+]);
+const post = postResult.status === 'fulfilled' ? postResult.value : null;
+const page = (!post && pageResult.status === 'fulfilled') ? pageResult.value : null;
 
 // If neither exists, render 404 without redirect
 if (!post && !page) {

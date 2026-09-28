@@ -76,7 +76,8 @@ export const POST: APIRoute = async ({ request, url }) => {
         for (const pUrl of purgeUrls) {
           try {
             const deleted = await cfCache.delete(pUrl);
-            if (deleted) nativePurgedCount++;
+            const deletedReq = await cfCache.delete(new Request(pUrl));
+            if (deleted || deletedReq) nativePurgedCount++;
           } catch {}
         }
       }
@@ -86,8 +87,12 @@ export const POST: APIRoute = async ({ request, url }) => {
 
     // 6. Optional: Global Cloudflare Edge Purge API (only if ZONE_ID & API_TOKEN are set)
     let cfPurgeResult = null;
-    const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
-    const cfApiToken = process.env.CLOUDFLARE_API_TOKEN;
+    const cfZoneId =
+      globalCfEnv?.CLOUDFLARE_ZONE_ID ||
+      process.env.CLOUDFLARE_ZONE_ID;
+    const cfApiToken =
+      globalCfEnv?.CLOUDFLARE_API_TOKEN ||
+      process.env.CLOUDFLARE_API_TOKEN;
 
     if (cfZoneId && cfApiToken) {
       try {
