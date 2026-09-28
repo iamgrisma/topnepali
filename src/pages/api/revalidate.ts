@@ -59,7 +59,24 @@ export const POST: APIRoute = async ({ request, url }) => {
       }
     }
 
-    // 5. Call Cloudflare Purge Cache API if credentials are provided
+    // 5. Native Cloudflare Worker Cache API Purge (Zero credentials / zero zone ID required)
+    let nativePurgedCount = 0;
+    try {
+      const globalCaches = (globalThis as any).caches;
+      if (globalCaches && typeof globalCaches.default !== 'undefined') {
+        const cfCache = globalCaches.default;
+        for (const pUrl of purgeUrls) {
+          try {
+            const deleted = await cfCache.delete(pUrl);
+            if (deleted) nativePurgedCount++;
+          } catch {}
+        }
+      }
+    } catch (err) {
+      console.warn('[revalidate] native caches.default purge warning:', err);
+    }
+
+    // 6. Optional: Global Cloudflare Edge Purge API (only if ZONE_ID & API_TOKEN are set)
     let cfPurgeResult = null;
     const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
     const cfApiToken = process.env.CLOUDFLARE_API_TOKEN;

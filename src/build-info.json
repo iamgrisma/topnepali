@@ -1,6 +1,6 @@
 {
-  "buildTime": "2026-09-28T15:41:21.587Z",
+  "buildTime": "2026-09-28T15:53:35.671Z",
   "environment": "production",
-  "target": "node",
+  "target": "cloudflare",
   "version": "1.0.0"
 }
