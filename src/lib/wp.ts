@@ -13,23 +13,30 @@ export function getWpBaseUrl(): string {
   return WP_URL;
 }
 
-// In-memory cache for SSR performance (24 hours TTL, purged on-demand via /api/revalidate)
+// In-memory cache for SSR performance (3 minutes TTL, purged on-demand via /api/revalidate)
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
 }
 const cache = new Map<string, CacheEntry<any>>();
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours (cleared via clearWpCache on webhook)
+const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes (deduplicates concurrent SSR renders without trapping stale data)
 
 export function clearWpCache(pattern?: string): number {
-  if (!pattern) {
+  if (!pattern || pattern === 'all') {
     const size = cache.size;
     cache.clear();
     return size;
   }
   let cleared = 0;
   for (const key of cache.keys()) {
-    if (key.includes(pattern)) {
+    // If a pattern or slug is provided, clear matching keys AND all post/tax collection keys
+    // because list queries (/wp/v2/posts) do NOT contain the individual post slug!
+    if (
+      key.includes(pattern) ||
+      key.includes('/wp/v2/posts') ||
+      key.includes('/wp/v2/categories') ||
+      key.includes('/wp/v2/tags')
+    ) {
       cache.delete(key);
       cleared++;
     }
@@ -40,7 +47,7 @@ export function clearWpCache(pattern?: string): number {
 async function fetchWithCache<T>(
   url: string,
   headersInit?: Record<string, string>,
-  cfTtl: number = 300
+  cfTtl: number = 60
 ): Promise<{ data: T; headers: Headers }> {
   const now = Date.now();
   const cached = cache.get(url);

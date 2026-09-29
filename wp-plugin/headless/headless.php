@@ -3,7 +3,7 @@
  * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
  * Description: Enterprise Headless WordPress engine for Astro SSR & Cloudflare Edge. Provides automatic granular cache invalidation, admin bar purge controls, native WordPress core zip updates, Rank Math SEO bridge, and subdomain protection.
- * Version: 1.4.0
+ * Version: 1.4.1
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.4.0';
+    const VERSION = '1.4.1';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
     const OPTION_SECRET = 'topnepali_headless_secret';
@@ -101,9 +101,9 @@ class TopNepali_Headless_Plugin {
         $route = $request->get_route();
         // Target posts, pages, categories, tags, and media queries
         if (preg_match('#^/wp/v2/(posts|pages|categories|tags|media)#', $route)) {
-            // Edge cache at 1 hour with stale-while-revalidate so updates reflect promptly
-            $response->header('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
-            $response->header('Cloudflare-CDN-Cache-Control', 'max-age=3600, stale-while-revalidate=86400');
+            // Edge cache REST responses for 60s with stale-while-revalidate so updates reflect promptly
+            $response->header('Cache-Control', 'public, max-age=60, s-maxage=120, stale-while-revalidate=300');
+            $response->header('Cloudflare-CDN-Cache-Control', 'max-age=120, stale-while-revalidate=300');
             $response->header('X-Headless-Edge-Cache', 'ENABLED');
         }
 
@@ -187,17 +187,6 @@ class TopNepali_Headless_Plugin {
         if (defined('LSCWP_V')) {
             do_action('litespeed_purge_all');
         }
-
-        // Proactively warm the target URLs from WordPress in the background
-        $warm_urls = array('/');
-        if ($slug) {
-            $warm_urls[] = '/' . ltrim($slug, '/');
-        }
-        if (!empty($extra_urls)) {
-            $warm_urls = array_merge($warm_urls, $extra_urls);
-        }
-
-        $this->warm_cache($warm_urls);
 
         return true;
     }

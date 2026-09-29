@@ -17,6 +17,12 @@ export const POST: APIRoute = async (context) => {
       const cf = await import('cloudflare:workers');
       if (cf && cf.env) cfEnv = cf.env;
     } catch {}
+    try {
+      const runtime = (context.locals as any)?.runtime;
+      if (runtime && runtime.env) {
+        cfEnv = { ...cfEnv, ...runtime.env };
+      }
+    } catch {}
     if (!cfEnv || Object.keys(cfEnv).length === 0) {
       cfEnv = (globalThis as any).__CF_ENV__ || (typeof process !== 'undefined' ? process.env : {}) || {};
     }
@@ -71,7 +77,9 @@ export const POST: APIRoute = async (context) => {
     const { slug, type = 'post', urls: customUrls = [] } = body;
 
     // 3. Invalidate internal SSR node/worker memory cache
-    const clearedCacheCount = clearWpCache(slug || undefined);
+    // Wipe all in-memory REST API caches so list queries (homepage, categories, feeds)
+    // and single-post queries immediately fetch fresh data from WordPress.
+    const clearedCacheCount = clearWpCache();
 
     // 4. Determine URLs to purge from Cloudflare Global Edge CDN
     const hostHeader = request.headers.get('x-forwarded-host') || request.headers.get('host');
@@ -187,6 +195,7 @@ export const POST: APIRoute = async (context) => {
               headers: {
                 'User-Agent': 'TopNepali-Proactive-Warmer/1.0',
                 'Accept': 'text/html,application/xhtml+xml',
+                'Cache-Control': 'no-cache',
               },
             })
           )
@@ -204,6 +213,8 @@ export const POST: APIRoute = async (context) => {
         slug: slug || null,
         type,
         internalCacheEntriesCleared: clearedCacheCount,
+        cfZoneConfigured: Boolean(cfZoneId && cfApiToken),
+        cfApiPurged,
         purgedUrls: purgeUrls,
         warmedUrls: warmedUrls,
       }),
