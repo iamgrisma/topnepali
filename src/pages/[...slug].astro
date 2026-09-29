@@ -14,6 +14,7 @@ import {
   getPostCategories,
   getPostTags,
   stripHtml,
+  decodeHtmlEntities,
   optimizeWpHtml,
   resolveRankMathVariables,
   getAllCategories
@@ -66,13 +67,20 @@ const parentCategory = (fullPrimary && fullPrimary.parent > 0) ? allCategories.f
 
 // 1. Title: Prefer Rank Math SEO title if present, fallback to post title
 const postRawTitle = item ? item.title.rendered : 'Page Not Found';
-const resolvedSeoTitle = resolveRankMathVariables(item?.seo?.title, {
-  title: postRawTitle,
+const cleanPostTitle = postRawTitle ? decodeHtmlEntities(stripHtml(postRawTitle)).trim() : 'Page Not Found';
+
+let resolvedSeoTitle = resolveRankMathVariables(item?.seo?.title, {
+  title: cleanPostTitle,
   siteName: 'Top Nepali',
   separator: '—',
   category: primaryCategory?.name,
 });
-const rawTitle = resolvedSeoTitle || postRawTitle;
+
+if (!resolvedSeoTitle || !resolvedSeoTitle.replace(/[\(\)\[\]\-\—\s\|\:\,]/g, '').trim()) {
+  resolvedSeoTitle = cleanPostTitle;
+}
+
+const rawTitle = resolvedSeoTitle || cleanPostTitle;
 const title = rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} — Top Nepali`;
 
 // 2. Description: Prefer Rank Math SEO description, fallback to post excerpt

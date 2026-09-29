@@ -552,12 +552,19 @@ export function resolveRankMathVariables(
     category?: string;
   }
 ): string {
-  if (!template || typeof template !== 'string') return '';
+  const cleanTitle = context.title ? decodeHtmlEntities(stripHtml(context.title)).trim() : '';
+  if (!template || typeof template !== 'string') return cleanTitle;
+
+  // Discard empty or punctuation-only templates (e.g. "()", "[]", "-", "—")
+  const strippedTest = template.replace(/[\(\)\[\]\-\—\s\|]/g, '').trim();
+  if (!strippedTest) {
+    return cleanTitle;
+  }
+
   const now = new Date();
   const siteName = context.siteName || 'Top Nepali';
   const sep = context.separator || '—';
-  const cleanTitle = context.title ? decodeHtmlEntities(stripHtml(context.title)) : '';
-  const cleanExcerpt = context.excerpt ? decodeHtmlEntities(stripHtml(context.excerpt)) : '';
+  const cleanExcerpt = context.excerpt ? decodeHtmlEntities(stripHtml(context.excerpt)).trim() : '';
 
   let resolved = template
     .replace(/%title%/gi, cleanTitle)
@@ -575,8 +582,13 @@ export function resolveRankMathVariables(
     .replace(/\s+/g, ' ')
     .trim();
 
-  // If the string was solely empty placeholders or just leftover separators, return the clean title
-  if (!resolved || resolved === sep || resolved === `${sep} ${siteName}`) {
+  // If the string was solely empty placeholders, brackets, or just leftover separators (e.g. "()", "() — Top Nepali", "—", etc.)
+  const resolvedWithoutPunctuation = resolved
+    .replace(new RegExp(siteName, 'gi'), '')
+    .replace(/[\(\)\[\]\-\—\s\|\:\,]/g, '')
+    .trim();
+
+  if (!resolvedWithoutPunctuation) {
     return cleanTitle;
   }
 

@@ -464,28 +464,28 @@ class TopNepali_Headless_Plugin {
      * Resolve Rank Math template variables (%title%, %currentyear%, %sep%, etc.)
      */
     private function resolve_seo_template_vars($template, $post_obj) {
-        if (empty($template) || !is_string($template)) {
-            return null;
-        }
-
-        // Try Rank Math native variable replacement if helper class is loaded
-        if (class_exists('\RankMath\Helper') && method_exists('\RankMath\Helper', 'replace_vars')) {
-            $native = \RankMath\Helper::replace_vars($template, $post_obj);
-            if (!empty($native) && strpos($native, '%title%') === false) {
-                return trim($native);
-            }
-        }
-
-        $title = $post_obj ? $post_obj->post_title : '';
+        $target_post = is_numeric($post_obj) ? get_post($post_obj) : $post_obj;
+        $title = $target_post ? $target_post->post_title : '';
         $site_name = get_bloginfo('name') ?: 'Top Nepali';
-        $excerpt = '';
-        if ($post_obj) {
-            $excerpt = !empty($post_obj->post_excerpt)
-                ? wp_strip_all_tags($post_obj->post_excerpt)
-                : wp_trim_words(wp_strip_all_tags($post_obj->post_content), 30);
+
+        if (empty($template) || !is_string($template)) {
+            return $title;
         }
 
-        $cats = $post_obj ? get_the_category($post_obj->ID) : array();
+        // If template only contains brackets or punctuation (like "()", "[]", "-"), discard it
+        $stripped = trim(preg_replace('/[\(\)\[\]\-\—\s\|]/', '', $template));
+        if (empty($stripped)) {
+            return $title;
+        }
+
+        $excerpt = '';
+        if ($target_post) {
+            $excerpt = !empty($target_post->post_excerpt)
+                ? wp_strip_all_tags($target_post->post_excerpt)
+                : wp_trim_words(wp_strip_all_tags($target_post->post_content), 30);
+        }
+
+        $cats = $target_post ? get_the_category($target_post->ID) : array();
         $cat_name = (!empty($cats) && !is_wp_error($cats)) ? $cats[0]->name : '';
 
         $resolved = str_ireplace(
@@ -520,7 +520,11 @@ class TopNepali_Headless_Plugin {
         $resolved = preg_replace('/%[a-z0-9_-]+%/i', '', $resolved);
         $resolved = trim(preg_replace('/\s+/', ' ', $resolved));
 
-        if (empty($resolved) || $resolved === '—' || $resolved === '— ' . $site_name) {
+        // If after resolution, the title only contains punctuation/brackets/separators (like "()", "() — Top Nepali", "—", etc.)
+        $test_without_punct = trim(str_ireplace($site_name, '', $resolved));
+        $test_without_punct = trim(preg_replace('/[\(\)\[\]\-\—\s\|\:\,]/', '', $test_without_punct));
+
+        if (empty($test_without_punct)) {
             return $title;
         }
 
