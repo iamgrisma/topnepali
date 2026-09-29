@@ -599,6 +599,9 @@ export function resolveRankMathVariables(
     return cleanTitle;
   }
 
+  // Deduplicate consecutive identical year tags like "(2026) (2026)"
+  resolved = resolved.replace(/\((\d{4})\)\s*\(\1\)/gi, '($1)');
+
   return resolved;
 }
 

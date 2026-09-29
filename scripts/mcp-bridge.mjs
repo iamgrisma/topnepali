@@ -71,6 +71,19 @@ async function refreshToken() {
 }
 
 async function sendMcpRequest(payload) {
+  function loadTokenFromDisk() {
+    if (fs.existsSync(TOKEN_FILE)) {
+      try {
+        const raw = fs.readFileSync(TOKEN_FILE, 'utf-8');
+        tokenData = JSON.parse(raw);
+      } catch (e) {
+        console.error('[mcp-bridge] Failed to read token file:', e.message);
+      }
+    }
+  }
+
+  loadTokenFromDisk();
+
   if (Date.now() >= (tokenData.expires_at || 0)) {
     await refreshToken();
   }
@@ -101,7 +114,14 @@ async function sendMcpRequest(payload) {
 
   const text = await res.text();
   if (!text.trim()) {
-    return null;
+    return {
+      jsonrpc: '2.0',
+      id: payload.id ?? null,
+      error: {
+        code: res.status !== 200 ? -32000 : -32603,
+        message: `WordPress MCP returned HTTP ${res.status} with empty body`
+      }
+    };
   }
   try {
     return JSON.parse(text);

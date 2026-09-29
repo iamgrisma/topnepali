@@ -81,7 +81,7 @@ if (!resolvedSeoTitle || !resolvedSeoTitle.replace(/[\(\)\[\]\-\—\s\|\:\,]/g, 
 }
 
 const rawTitle = resolvedSeoTitle || cleanPostTitle;
-const title = rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} — Top Nepali`;
+const title = (rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} — Top Nepali`).replace(/\((\d{4})\)\s*\(\1\)/gi, '($1)');
 
 // 2. Description: Prefer Rank Math SEO description, fallback to post excerpt
 const fallbackExcerpt = item ? stripHtml(item.excerpt?.rendered || item.content?.rendered || '').slice(0, 160) : 'The requested page could not be found.';
