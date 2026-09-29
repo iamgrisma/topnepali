@@ -63,8 +63,13 @@ export const POST: APIRoute = async (context) => {
 
     // 5. Cloudflare Zone API Purge across all 300+ Edge POPs (if credentials configured)
     let cfApiPurged = false;
-    const cfZoneId = (process.env.CF_ZONE_ID || (context.locals as any)?.runtime?.env?.CF_ZONE_ID || '').trim();
-    const cfApiToken = (process.env.CF_API_TOKEN || (context.locals as any)?.runtime?.env?.CF_API_TOKEN || '').trim();
+    let cfZoneId = '';
+    let cfApiToken = '';
+
+    try {
+      cfZoneId = (typeof process !== 'undefined' ? process.env?.CF_ZONE_ID : '') || '';
+      cfApiToken = (typeof process !== 'undefined' ? process.env?.CF_API_TOKEN : '') || '';
+    } catch {}
 
     if (cfZoneId && cfApiToken) {
       try {
