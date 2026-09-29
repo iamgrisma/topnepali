@@ -9,10 +9,8 @@ const env =
 export const SITE_URL: string = (env.URL || 'https://topnepali.com').replace(/\/+$/, '');
 
 const rawWpUrl = env.WORDPRESS_URL || env.WP_URL;
-// If WORDPRESS_URL is missing or incorrectly set to non-existent wp.topnepali.com, default to https://topnepali.com
-export const WP_URL: string = (
-  rawWpUrl && !rawWpUrl.includes('wp.topnepali.com') ? rawWpUrl : 'https://topnepali.com'
-).replace(/\/+$/, '');
+// Staged / migrated WordPress REST API backend at wp.topnepali.com
+export const WP_URL: string = (rawWpUrl || 'https://wp.topnepali.com').replace(/\/+$/, '');
 
 export const GTM_ID: string = env.PUBLIC_GTM_ID || 'GTM-MD2NWFJ';
 export const GA_ID: string = env.PUBLIC_GA_ID || 'G-K2R0GSQE0M';
