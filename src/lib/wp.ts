@@ -145,16 +145,23 @@ export async function getPosts(options: GetPostsOptions = {}): Promise<Paginatio
   }
 
   if (category) {
+    let catId: number | null = null;
     // If category is a slug, resolve it to an ID first
     if (typeof category === 'string' && isNaN(Number(category))) {
       const catObj = await getCategoryBySlug(category);
       if (catObj) {
-        params.set('categories', String(catObj.id));
+        catId = catObj.id;
       } else {
         return { data: [], total: 0, totalPages: 0, currentPage: page };
       }
     } else {
-      params.set('categories', String(category));
+      catId = Number(category);
+    }
+
+    if (catId) {
+      // Include parent category and all child subcategories (WordPress core 'include_children' behavior)
+      const descendantIds = await getCategoryAndDescendantIds(catId);
+      params.set('categories', descendantIds.join(','));
     }
   }
 
@@ -232,6 +239,42 @@ export async function getPageBySlug(slug: string): Promise<WPPage | null> {
     console.error(`getPageBySlug (${slug}) error:`, err);
     return null;
   }
+}
+
+/**
+ * Fetch all categories with edge / in-memory cache
+ */
+export async function getAllCategories(): Promise<WPCategory[]> {
+  const base = getWpBaseUrl();
+  const url = `${base}/wp-json/wp/v2/categories?per_page=100&_fields=id,count,description,link,name,slug,taxonomy,parent`;
+  try {
+    const { data } = await fetchWithCache<WPCategory[]>(url, undefined, 86400);
+    return Array.isArray(data) && data.length > 0 ? data : DEFAULT_TOP_CATEGORIES;
+  } catch (err) {
+    console.warn('getAllCategories error, falling back to static:', err);
+    return DEFAULT_TOP_CATEGORIES;
+  }
+}
+
+/**
+ * Returns the category ID and all its recursive descendant child category IDs.
+ * Matches WordPress core's native WP_Query 'include_children' => true behavior.
+ */
+export async function getCategoryAndDescendantIds(categoryId: number): Promise<number[]> {
+  const allCategories = await getAllCategories();
+  const ids: number[] = [categoryId];
+
+  function collectChildren(parentId: number) {
+    for (const cat of allCategories) {
+      if (cat.parent === parentId && !ids.includes(cat.id)) {
+        ids.push(cat.id);
+        collectChildren(cat.id);
+      }
+    }
+  }
+
+  collectChildren(categoryId);
+  return ids;
 }
 
 /**
