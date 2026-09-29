@@ -50,6 +50,20 @@ export interface WPEmbedded {
   'wp:term'?: WPTerm[][];
 }
 
+export interface WPSEO {
+  title?: string | null;
+  description?: string | null;
+  canonical_url?: string | null;
+  focus_keyword?: string | null;
+  robots?: string | string[] | null;
+  og_title?: string | null;
+  og_description?: string | null;
+  og_image?: string | null;
+  twitter_title?: string | null;
+  twitter_desc?: string | null;
+  twitter_image?: string | null;
+}
+
 export interface WPPost {
   id: number;
   date: string;
@@ -69,6 +83,8 @@ export interface WPPost {
   categories: number[];
   tags: number[];
   _embedded?: WPEmbedded;
+  head?: string | null;
+  seo?: WPSEO;
 }
 
 export interface WPPage {
@@ -84,6 +100,8 @@ export interface WPPage {
   excerpt?: WPRendered;
   featured_media?: number;
   _embedded?: WPEmbedded;
+  head?: string | null;
+  seo?: WPSEO;
 }
 
 export interface WPCategory {

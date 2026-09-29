@@ -10,6 +10,12 @@ interface Props {
   image?: string;
   type?: 'website' | 'article';
   canonicalUrl?: string;
+  headHtml?: string | null;
+  publishedTime?: string;
+  modifiedTime?: string;
+  authorName?: string;
+  section?: string;
+  robots?: string | null;
 }
 
 const {
@@ -18,6 +24,12 @@ const {
   image = 'https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png',
   type = 'website',
   canonicalUrl,
+  headHtml = null,
+  publishedTime,
+  modifiedTime,
+  authorName,
+  section,
+  robots,
 } = Astro.props;
 
 import { SITE_URL, GTM_ID, GA_ID, ADSENSE_ID } from '../config';
@@ -33,25 +45,97 @@ const gtmId = GTM_ID;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{title}</title>
-    <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
+
+    {/* Verification & Monetization Meta */}
+    <meta name="monetag" content="5c257f1f9f4a320696d71ee77d24020c" />
+    <meta name="google-adsense-platform-account" content="ca-host-pub-2644536267352236" />
+    <meta name="google-adsense-platform-domain" content="sitekit.withgoogle.com" />
+    <meta name="twitter:site" content="@topnepalicom" />
+
+    {headHtml ? (
+      /* Directly render Rank Math's exact head HTML from WordPress */
+      <Fragment set:html={headHtml} />
+    ) : (
+      /* Fallback native SEO tags & Google JSON-LD schema */
+      <>
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        <link rel="canonical" href={canonical} />
+        {robots && <meta name="robots" content={robots} />}
+
+        <!-- Open Graph -->
+        <meta property="og:site_name" content="Top Nepali" />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:type" content={type} />
+        <meta property="og:url" content={canonical} />
+        {image && <meta property="og:image" content={image} />}
+        {publishedTime && <meta property="article:published_time" content={publishedTime} />}
+        {modifiedTime && <meta property="article:modified_time" content={modifiedTime} />}
+        {section && <meta property="article:section" content={section} />}
+
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={description} />
+        {image && <meta name="twitter:image" content={image} />}
+
+        <!-- Schema.org JSON-LD Structured Data -->
+        {type === 'article' ? (
+          <script
+            type="application/ld+json"
+            is:inline
+            set:html={JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "NewsArticle",
+              "headline": title,
+              "description": description,
+              "image": image ? [image] : [],
+              "datePublished": publishedTime || new Date().toISOString(),
+              "dateModified": modifiedTime || publishedTime || new Date().toISOString(),
+              "author": [{
+                "@type": "Person",
+                "name": authorName || "Top Nepali Editorial Team",
+                "url": "https://topnepali.com"
+              }],
+              "publisher": {
+                "@type": "Organization",
+                "name": "Top Nepali",
+                "url": "https://topnepali.com",
+                "logo": {
+                  "@type": "ImageObject",
+                  "url": "https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png"
+                }
+              },
+              "mainEntityOfPage": {
+                "@type": "WebPage",
+                "@id": canonical
+              },
+              ...(section ? { "articleSection": section } : {})
+            })}
+          />
+        ) : (
+          <script
+            type="application/ld+json"
+            is:inline
+            set:html={JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "name": "Top Nepali",
+              "url": "https://topnepali.com",
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://topnepali.com/search?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+              }
+            })}
+          />
+        )}
+      </>
+    )}
+
     <link rel="alternate" type="application/rss+xml" title="Top Nepali RSS Feed" href="/rss.xml" />
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
-
-    <!-- Open Graph -->
-    <meta property="og:site_name" content="Top Nepali" />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:type" content={type} />
-    <meta property="og:url" content={canonical} />
-    {image && <meta property="og:image" content={image} />}
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={title} />
-    <meta name="twitter:description" content={description} />
-    {image && <meta name="twitter:image" content={image} />}
 
     <!-- Favicon -->
     <link rel="icon" href="https://objects.topnepali.com/wp-content/uploads/2026/09/cropped-Top-Nepali-Logo-32x32.png" sizes="32x32" />

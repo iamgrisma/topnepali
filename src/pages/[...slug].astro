@@ -41,14 +41,32 @@ if (!post && !page) {
 const isArticle = Boolean(post);
 const item = post || page;
 
-const title = item ? item.title.rendered : 'Page Not Found';
-const description = item ? stripHtml(item.excerpt?.rendered || item.content?.rendered || '').slice(0, 160) : 'The requested page could not be found.';
+// 1. Title: Prefer Rank Math SEO title if present, fallback to post title
+const seoTitle = item?.seo?.title;
+const rawTitle = seoTitle || (item ? item.title.rendered : 'Page Not Found');
+const title = rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} — Top Nepali`;
+
+// 2. Description: Prefer Rank Math SEO description, fallback to post excerpt
+const fallbackExcerpt = item ? stripHtml(item.excerpt?.rendered || item.content?.rendered || '').slice(0, 160) : 'The requested page could not be found.';
+const description = item?.seo?.description || fallbackExcerpt;
+
+// 3. Featured Image / OG Image
 const featuredImg = item ? getPostFeaturedImage(item) : null;
+const ogImage = item?.seo?.og_image || featuredImg?.url || 'https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png';
+
+// 4. Canonical URL: Prefer Rank Math canonical URL, fallback to site canonical
+const canonicalUrl = item?.seo?.canonical_url || (item ? `https://topnepali.com/${cleanSlug}` : undefined);
+
+// 5. Author, Categories, Tags & Dates
 const author = post ? getPostAuthor(post) : null;
 const categories = post ? getPostCategories(post) : [];
 const tags = post ? getPostTags(post) : [];
 const primaryCategory = categories[0];
 const readingTime = item ? estimateReadingTime(item.content?.rendered || '') : '';
+const publishedTime = post?.date;
+const modifiedTime = post?.modified;
+const robots = typeof item?.seo?.robots === 'string' ? item.seo.robots : null;
+const headHtml = item?.head || null;
 
 // Fetch related posts if viewing an article
 let relatedPosts: any[] = [];
@@ -133,10 +151,17 @@ const currentUrl = Astro.url.href;
   </BaseLayout>
 ) : (
   <BaseLayout
-    title={`${title} — Top Nepali`}
+    title={title}
     description={description}
-    image={featuredImg?.url}
+    image={ogImage}
     type={isArticle ? 'article' : 'website'}
+    canonicalUrl={canonicalUrl}
+    headHtml={headHtml}
+    publishedTime={publishedTime}
+    modifiedTime={modifiedTime}
+    authorName={author?.name}
+    section={primaryCategory?.name}
+    robots={robots}
   >
     <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-8">
       

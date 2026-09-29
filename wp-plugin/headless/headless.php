@@ -136,9 +136,46 @@ class TopNepali_Headless_Plugin {
     }
 
     /**
-     * REST API Security: Block unauthenticated user enumeration
+     * REST API Enhancements:
+     * - Expose Rank Math rendered head & structured SEO metadata
+     * - Block unauthenticated user enumeration
      */
     public function configure_rest_api() {
+        // Enable Rank Math native REST API post meta and headless support
+        add_filter('rank_math/rest/enable_post_meta', '__return_true');
+        add_filter('rank_math/frontend/headless', '__return_true');
+
+        // Expose Rank Math fully-rendered head HTML in /wp/v2/posts and /wp/v2/pages
+        register_rest_field(array('post', 'page'), 'head', array(
+            'get_callback' => array($this, 'get_rank_math_head'),
+            'schema'       => array(
+                'description' => 'Rank Math rendered HTML head tags and JSON-LD schema',
+                'type'        => 'string',
+            ),
+        ));
+
+        // Expose Rank Math structured SEO fields in /wp/v2/posts and /wp/v2/pages
+        register_rest_field(array('post', 'page'), 'seo', array(
+            'get_callback' => array($this, 'get_rank_math_seo_fields'),
+            'schema'       => array(
+                'description' => 'Rank Math structured SEO metadata',
+                'type'        => 'object',
+            ),
+        ));
+
+        // Dedicated endpoint: /wp-json/headless/v1/head?slug=...
+        register_rest_route('headless/v1', '/head', array(
+            'methods'             => 'GET',
+            'callback'            => array($this, 'rest_get_rendered_head'),
+            'permission_callback' => '__return_true',
+            'args'                => array(
+                'slug' => array(
+                    'required'          => true,
+                    'sanitize_callback' => 'sanitize_title',
+                ),
+            ),
+        ));
+
         if (!is_user_logged_in()) {
             add_filter('rest_endpoints', function ($endpoints) {
                 if (isset($endpoints['/wp/v2/users'])) {
@@ -150,6 +187,88 @@ class TopNepali_Headless_Plugin {
                 return $endpoints;
             });
         }
+    }
+
+    /**
+     * Get rendered Rank Math head HTML for a post/page
+     */
+    public function get_rank_math_head($post_arr) {
+        $post_id = is_array($post_arr) ? ($post_arr['id'] ?? 0) : $post_arr;
+        if (!$post_id) return null;
+
+        if (!class_exists('\RankMath\Paper\Paper')) {
+            return null;
+        }
+
+        $orig_post = $GLOBALS['post'] ?? null;
+        $target_post = get_post($post_id);
+        if (!$target_post) return null;
+
+        $GLOBALS['post'] = $target_post;
+        setup_postdata($target_post);
+
+        ob_start();
+        do_action('rank_math/head');
+        $head = ob_get_clean();
+
+        if ($orig_post) {
+            $GLOBALS['post'] = $orig_post;
+            setup_postdata($orig_post);
+        } else {
+            wp_reset_postdata();
+        }
+
+        return !empty($head) ? trim($head) : null;
+    }
+
+    /**
+     * Get structured Rank Math SEO fields for a post/page
+     */
+    public function get_rank_math_seo_fields($post_arr) {
+        $post_id = is_array($post_arr) ? ($post_arr['id'] ?? 0) : $post_arr;
+        if (!$post_id) return null;
+
+        return array(
+            'title'          => get_post_meta($post_id, 'rank_math_title', true) ?: null,
+            'description'    => get_post_meta($post_id, 'rank_math_description', true) ?: null,
+            'canonical_url'  => get_post_meta($post_id, 'rank_math_canonical_url', true) ?: null,
+            'focus_keyword'  => get_post_meta($post_id, 'rank_math_focus_keyword', true) ?: null,
+            'robots'         => get_post_meta($post_id, 'rank_math_robots', true) ?: null,
+            'og_title'       => get_post_meta($post_id, 'rank_math_facebook_title', true) ?: null,
+            'og_description' => get_post_meta($post_id, 'rank_math_facebook_description', true) ?: null,
+            'og_image'       => get_post_meta($post_id, 'rank_math_facebook_image', true) ?: null,
+            'twitter_title'  => get_post_meta($post_id, 'rank_math_twitter_title', true) ?: null,
+            'twitter_desc'   => get_post_meta($post_id, 'rank_math_twitter_description', true) ?: null,
+            'twitter_image'  => get_post_meta($post_id, 'rank_math_twitter_image', true) ?: null,
+        );
+    }
+
+    /**
+     * Dedicated REST Callback for /wp-json/headless/v1/head?slug=...
+     */
+    public function rest_get_rendered_head($request) {
+        $slug = $request->get_param('slug');
+        $posts = get_posts(array(
+            'name'        => $slug,
+            'post_type'   => array('post', 'page'),
+            'post_status' => 'publish',
+            'numberposts' => 1,
+        ));
+
+        if (empty($posts)) {
+            return new WP_Error('not_found', 'Post or page not found', array('status' => 404));
+        }
+
+        $post = $posts[0];
+        $head = $this->get_rank_math_head(array('id' => $post->ID));
+        $seo  = $this->get_rank_math_seo_fields(array('id' => $post->ID));
+
+        return rest_ensure_response(array(
+            'id'    => $post->ID,
+            'slug'  => $post->post_name,
+            'head'  => $head,
+            'seo'   => $seo,
+        ));
     }
 
     /**
