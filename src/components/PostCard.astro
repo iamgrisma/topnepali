@@ -7,6 +7,7 @@ import {
   getPostFeaturedImage,
   getPostAuthor,
   getPostCategories,
+  getPostTitle,
   stripHtml
 } from '../lib/wp';
 
@@ -17,6 +18,7 @@ interface Props {
 
 const { post, featured = false } = Astro.props;
 
+const title = getPostTitle(post);
 const featuredImage = getPostFeaturedImage(post);
 const author = getPostAuthor(post);
 const categories = getPostCategories(post);
@@ -51,7 +53,7 @@ const excerpt = stripHtml(post.excerpt?.rendered || '');
 
     <h2 class={`card-title ${featured ? 'text-xl sm:text-2xl' : 'text-base sm:text-lg'}`}>
       <a href={`/${post.slug}`} class="title-link">
-        {post.title.rendered}
+        {title}
       </a>
     </h2>
 

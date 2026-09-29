@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getPosts, getSiteInfo } from '../lib/wp';
+import { getPosts, getSiteInfo, getPostTitle, stripHtml } from '../lib/wp';
 import { SITE_URL } from '../config';
 
 function escapeXml(unsafe: string): string {
@@ -20,11 +20,9 @@ export const GET: APIRoute = async () => {
     .map((post) => {
       const postUrl = `${siteUrl}/${post.slug}`;
       const pubDate = new Date(post.date_gmt || post.date).toUTCString();
-      const title = escapeXml(post.title?.rendered || 'Untitled');
+      const title = escapeXml(getPostTitle(post) || 'Untitled');
       const excerpt = escapeXml(
-        (post.excerpt?.rendered || post.content?.rendered || '')
-          .replace(/<[^>]*>/g, '')
-          .trim()
+        stripHtml(post.excerpt?.rendered || post.content?.rendered || '')
           .slice(0, 300)
       );
 

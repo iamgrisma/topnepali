@@ -401,12 +401,18 @@ export async function getRecentPosts(limit: number = 5): Promise<WPPost[]> {
 // Presentation Helper Utilities
 // ---------------------------------------------------------------------
 
+export function getPostTitle(post: WPPost | WPPage | { title?: { rendered?: string } } | string | null | undefined): string {
+  if (!post) return '';
+  const raw = typeof post === 'string' ? post : (post.title?.rendered || '');
+  return decodeHtmlEntities(raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+}
+
 export function getPostFeaturedImage(post: WPPost | WPPage): { url: string; alt: string; width?: number; height?: number } | null {
   const media = post._embedded?.['wp:featuredmedia']?.[0];
   if (!media || !media.source_url) return null;
   return {
     url: media.source_url,
-    alt: media.alt_text || post.title?.rendered || 'Post thumbnail',
+    alt: media.alt_text ? decodeHtmlEntities(media.alt_text) : (getPostTitle(post) || 'Post thumbnail'),
     width: media.media_details?.width,
     height: media.media_details?.height,
   };
@@ -470,20 +476,41 @@ export function stripHtml(html: string): string {
 
 export function decodeHtmlEntities(text: string): string {
   if (!text) return '';
-  return text
-    .replace(/&#8211;/g, '–')
-    .replace(/&#8212;/g, '—')
-    .replace(/&#8216;/g, "'")
-    .replace(/&#8217;/g, "'")
-    .replace(/&#8220;/g, '"')
-    .replace(/&#8221;/g, '"')
-    .replace(/&#038;/g, '&')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&#([0-9]+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)));
+  let str = text;
+  // Multi-pass to cleanly decode nested or double-escaped entities (e.g. &amp;#038; -> &#038; -> &)
+  for (let i = 0; i < 3; i++) {
+    const prev = str;
+    str = str
+      .replace(/&#8211;|&ndash;/g, '–')
+      .replace(/&#8212;|&mdash;/g, '—')
+      .replace(/&#8216;|&lsquo;/g, "'")
+      .replace(/&#8217;|&rsquo;/g, "'")
+      .replace(/&#8220;|&ldquo;/g, '"')
+      .replace(/&#8221;|&rdquo;/g, '"')
+      .replace(/&#8230;|&hellip;/g, '…')
+      .replace(/&#038;|&#38;|&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&#([0-9]+);/g, (_, code) => {
+        try {
+          return String.fromCharCode(parseInt(code, 10));
+        } catch {
+          return _;
+        }
+      })
+      .replace(/&#x([0-9a-f]+);/gi, (_, code) => {
+        try {
+          return String.fromCharCode(parseInt(code, 16));
+        } catch {
+          return _;
+        }
+      });
+    if (str === prev) break;
+  }
+  return str;
 }
 
 /**

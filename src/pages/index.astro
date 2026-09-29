@@ -1,7 +1,7 @@
 ---
 // index.astro — High-Performance Mother Portal Landing Page for TopNepali Ecosystem
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getPosts, getSiteInfo, getPostFeaturedImage, formatDate, estimateReadingTime } from '../lib/wp';
+import { getPosts, getSiteInfo, getPostFeaturedImage, formatDate, estimateReadingTime, getPostTitle, stripHtml } from '../lib/wp';
 
 // Instant synchronous site metadata (zero network latency)
 const siteInfo = getSiteInfo();
@@ -368,11 +368,11 @@ const knowledgeHubs = [
                 </div>
                 <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-3 leading-snug">
                   <a href={`/${leadPost.slug}`} class="hover:text-indigo-600 transition">
-                    {leadPost.title.rendered}
+                    {getPostTitle(leadPost)}
                   </a>
                 </h3>
                 <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6 line-clamp-3">
-                  {(leadPost.excerpt?.rendered || '').replace(/<[^>]+>/g, '').trim()}
+                  {stripHtml(leadPost.excerpt?.rendered || '')}
                 </p>
                 <a
                   href={`/${leadPost.slug}`}
@@ -410,11 +410,11 @@ const knowledgeHubs = [
                 <time class="text-[11px] text-slate-400 block mb-1.5">{formatDate(post.date)}</time>
                 <h4 class="font-bold text-sm sm:text-base text-slate-900 hover:text-indigo-600 transition line-clamp-2 leading-snug mb-2">
                   <a href={`/${post.slug}`}>
-                    {post.title.rendered}
+                    {getPostTitle(post)}
                   </a>
                 </h4>
                 <p class="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                  {(post.excerpt?.rendered || '').replace(/<[^>]+>/g, '').trim()}
+                  {stripHtml(post.excerpt?.rendered || '')}
                 </p>
               </div>
               <div class="pt-3 mt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
@@ -437,7 +437,7 @@ const knowledgeHubs = [
                 class="group p-3 rounded-lg border border-slate-200 bg-white hover:border-indigo-400 transition block"
               >
                 <h5 class="text-xs font-semibold text-slate-800 group-hover:text-indigo-600 transition line-clamp-2 leading-snug">
-                  {post.title.rendered}
+                  {getPostTitle(post)}
                 </h5>
                 <time class="text-[10px] text-slate-400 block mt-1">
                   {formatDate(post.date)}

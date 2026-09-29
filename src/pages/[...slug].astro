@@ -13,6 +13,7 @@ import {
   getPostAuthor,
   getPostCategories,
   getPostTags,
+  getPostTitle,
   stripHtml,
   decodeHtmlEntities,
   optimizeWpHtml,
@@ -83,8 +84,7 @@ const fullPrimary = primaryCategory ? allCategories.find((ac) => ac.id === prima
 const parentCategory = (fullPrimary && fullPrimary.parent > 0) ? allCategories.find((p) => p.id === fullPrimary.parent) : null;
 
 // 1. Title: Prefer Rank Math SEO title if present, fallback to post title
-const postRawTitle = item ? item.title.rendered : 'Page Not Found';
-const cleanPostTitle = postRawTitle ? decodeHtmlEntities(stripHtml(postRawTitle)).trim() : 'Page Not Found';
+const cleanPostTitle = item ? getPostTitle(item) : 'Page Not Found';
 
 let resolvedSeoTitle = resolveRankMathVariables(item?.seo?.title, {
   title: cleanPostTitle,
@@ -97,19 +97,19 @@ if (!resolvedSeoTitle || !resolvedSeoTitle.replace(/[\(\)\[\]\-\—\s\|\:\,]/g, 
   resolvedSeoTitle = cleanPostTitle;
 }
 
-const rawTitle = resolvedSeoTitle || cleanPostTitle;
+const rawTitle = decodeHtmlEntities(resolvedSeoTitle || cleanPostTitle);
 const title = (rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} — Top Nepali`).replace(/\((\d{4})\)\s*\(\1\)/gi, '($1)');
 
 // 2. Description: Prefer Rank Math SEO description, fallback to post excerpt
 const fallbackExcerpt = item ? stripHtml(item.excerpt?.rendered || item.content?.rendered || '').slice(0, 160) : 'The requested page could not be found.';
 const resolvedSeoDesc = resolveRankMathVariables(item?.seo?.description, {
-  title: postRawTitle,
+  title: cleanPostTitle,
   excerpt: fallbackExcerpt,
   siteName: 'Top Nepali',
   separator: '—',
   category: primaryCategory?.name,
 });
-const description = resolvedSeoDesc || fallbackExcerpt;
+const description = decodeHtmlEntities(resolvedSeoDesc || fallbackExcerpt);
 
 // 3. Featured Image / OG Image
 const featuredImg = item ? getPostFeaturedImage(item) : null;
@@ -272,7 +272,7 @@ const currentUrl = Astro.url.href;
 
           <!-- Headline -->
           <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight mb-4 tracking-tight">
-            {title}
+            {cleanPostTitle}
           </h1>
 
           <!-- Meta Bar (Author, Date, Reading Time) -->
@@ -412,7 +412,7 @@ const currentUrl = Astro.url.href;
                         </div>
                       ) : null}
                       <h4 class="font-semibold text-xs text-slate-800 group-hover:text-indigo-600 line-clamp-2 leading-snug">
-                        {rel.title.rendered}
+                        {getPostTitle(rel)}
                       </h4>
                       <time class="text-[10px] text-slate-400 block mt-1">
                         {formatDate(rel.date)}

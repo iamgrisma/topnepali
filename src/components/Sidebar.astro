@@ -1,6 +1,6 @@
 ---
 // Sidebar.astro — Right sidebar widgets matching GeneratePress / TopNepali blog layout
-import { DEFAULT_TOP_CATEGORIES, getRecentPosts, formatDate, getPostFeaturedImage } from '../lib/wp';
+import { DEFAULT_TOP_CATEGORIES, getRecentPosts, formatDate, getPostFeaturedImage, getPostTitle } from '../lib/wp';
 import type { WPPost, WPCategory } from '../types/wp';
 
 interface Props {
@@ -81,7 +81,7 @@ const recentPosts = allRecent.filter((p) => p.id !== excludePostId).slice(0, 5);
                 href={`/${post.slug}`}
                 class="font-semibold text-xs text-slate-800 line-clamp-2 leading-snug group-hover:text-indigo-600 transition"
               >
-                {post.title.rendered}
+                {getPostTitle(post)}
               </a>
               <time class="text-[11px] text-slate-400 block mt-1">
                 {formatDate(post.date)}
