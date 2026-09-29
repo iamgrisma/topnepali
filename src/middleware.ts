@@ -61,8 +61,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=600');
       response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=300, stale-while-revalidate=600');
     } else {
-      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
-      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=600, stale-while-revalidate=1200');
+      response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=3600, stale-while-revalidate=86400');
     }
 
     // Standard security headers

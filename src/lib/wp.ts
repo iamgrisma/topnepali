@@ -37,7 +37,11 @@ export function clearWpCache(pattern?: string): number {
   return cleared;
 }
 
-async function fetchWithCache<T>(url: string, headersInit?: Record<string, string>): Promise<{ data: T; headers: Headers }> {
+async function fetchWithCache<T>(
+  url: string,
+  headersInit?: Record<string, string>,
+  cfTtl: number = 3600
+): Promise<{ data: T; headers: Headers }> {
   const now = Date.now();
   const cached = cache.get(url);
   if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
@@ -50,6 +54,11 @@ async function fetchWithCache<T>(url: string, headersInit?: Record<string, strin
       'Accept': 'application/json',
       ...headersInit,
     },
+    // Instruct Cloudflare Edge network to cache backend WordPress REST API responses
+    cf: {
+      cacheTtl: cfTtl,
+      cacheEverything: true,
+    } as any,
   });
 
   if (!response.ok) {
@@ -99,6 +108,7 @@ export interface GetPostsOptions {
   exclude?: number[];
   order?: 'asc' | 'desc';
   orderby?: 'date' | 'relevance' | 'title' | 'id';
+  fields?: string;
 }
 
 export async function getPosts(options: GetPostsOptions = {}): Promise<PaginationResult<WPPost>> {
@@ -112,6 +122,7 @@ export async function getPosts(options: GetPostsOptions = {}): Promise<Paginatio
     exclude,
     order = 'desc',
     orderby = 'date',
+    fields,
   } = options;
 
   const params = new URLSearchParams({
@@ -121,6 +132,13 @@ export async function getPosts(options: GetPostsOptions = {}): Promise<Paginatio
     order,
     orderby,
   });
+
+  // Prune unused heavy content.rendered for list queries (drastically reduces JSON payload size)
+  if (fields) {
+    params.set('_fields', fields);
+  } else {
+    params.set('_fields', 'id,date,modified,slug,status,type,link,title,excerpt,featured_media,categories,tags,_links,_embedded,head,seo');
+  }
 
   if (category) {
     // If category is a slug, resolve it to an ID first
@@ -296,7 +314,11 @@ export async function getTagBySlug(slug: string): Promise<WPTag | null> {
  * Fetch recent posts for sidebar widget
  */
 export async function getRecentPosts(limit: number = 5): Promise<WPPost[]> {
-  const res = await getPosts({ perPage: limit, page: 1 });
+  const res = await getPosts({
+    perPage: limit,
+    page: 1,
+    fields: 'id,date,slug,title,featured_media,_links,_embedded',
+  });
   return res.data;
 }
 
