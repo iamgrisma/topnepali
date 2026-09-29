@@ -40,7 +40,7 @@ export function clearWpCache(pattern?: string): number {
 async function fetchWithCache<T>(
   url: string,
   headersInit?: Record<string, string>,
-  cfTtl: number = 3600
+  cfTtl: number = 300
 ): Promise<{ data: T; headers: Headers }> {
   const now = Date.now();
   const cached = cache.get(url);

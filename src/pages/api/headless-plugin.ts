@@ -99,8 +99,19 @@ function createZipBuffer(entries: ZipEntry[]): Buffer {
   return Buffer.concat([...localHeaders, ...centralHeaders, eocd]);
 }
 
-export const GET: APIRoute = async ({ url, request }) => {
+export const GET: APIRoute = async (context) => {
+  const { url, request } = context;
   const reqSecret = request.headers.get('x-revalidate-secret') || url.searchParams.get('secret');
+
+  const cfEnv = (context.locals as any)?.runtime?.env || (globalThis as any).__CF_ENV__ || {};
+  const validSecrets = Array.from(new Set([
+    cfEnv.REVALIDATE_SECRET,
+    cfEnv.INTERNAL_API_SECRET,
+    (typeof process !== 'undefined' ? process.env?.REVALIDATE_SECRET : ''),
+    (typeof process !== 'undefined' ? process.env?.INTERNAL_API_SECRET : ''),
+    REVALIDATE_SECRET,
+    'topnepali_revalidate_secure_token',
+  ].filter(Boolean).map((s: any) => String(s).trim())));
 
   function timingSafeCompare(a: string, b: string): boolean {
     if (typeof a !== 'string' || typeof b !== 'string') return false;
@@ -112,8 +123,18 @@ export const GET: APIRoute = async ({ url, request }) => {
     return diff === 0;
   }
 
+  function isValidSecret(provided: string): boolean {
+    const cleanProvided = String(provided).trim();
+    for (const expected of validSecrets) {
+      if (timingSafeCompare(cleanProvided, expected)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   // Strictly enforce secret token authentication to protect private plugin distribution
-  if (!reqSecret || !timingSafeCompare(reqSecret, REVALIDATE_SECRET)) {
+  if (!reqSecret || !isValidSecret(reqSecret)) {
     return new Response(JSON.stringify({ error: 'Unauthorized: Valid secret token required' }), {
       status: 401,
       headers: {

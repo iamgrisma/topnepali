@@ -156,7 +156,7 @@ class TopNepali_Headless_Plugin {
             return false;
         }
 
-        $endpoint = $frontend_url . '/api/revalidate';
+        $endpoint = $frontend_url . '/api/revalidate?secret=' . rawurlencode($secret);
 
         $payload = array(
             'slug'   => $slug,
@@ -170,11 +170,13 @@ class TopNepali_Headless_Plugin {
         // Fire-and-forget non-blocking HTTP request (does not block editor)
         wp_remote_post($endpoint, array(
             'method'      => 'POST',
-            'timeout'     => 4,
+            'timeout'     => 5,
             'blocking'    => false, // Asynchronous
             'sslverify'   => true,
             'headers'     => array(
                 'Content-Type'        => 'application/json',
+                'Origin'              => $frontend_url,
+                'Referer'             => $frontend_url,
                 'x-revalidate-secret' => $secret,
             ),
             'body'        => wp_json_encode($payload),
@@ -858,11 +860,13 @@ class TopNepali_Headless_Plugin {
 
         $test_result = null;
         if (isset($_POST['topnepali_test_revalidate']) && check_admin_referer('topnepali_test_action', 'topnepali_test_nonce')) {
-            $test_endpoint = $frontend_url . '/api/revalidate';
+            $test_endpoint = $frontend_url . '/api/revalidate?secret=' . rawurlencode($secret);
             $response = wp_remote_post($test_endpoint, array(
                 'timeout' => 8,
                 'headers' => array(
                     'Content-Type'        => 'application/json',
+                    'Origin'              => $frontend_url,
+                    'Referer'             => $frontend_url,
                     'x-revalidate-secret' => $secret,
                 ),
                 'body' => wp_json_encode(array(

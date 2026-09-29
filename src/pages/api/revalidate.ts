@@ -10,6 +10,16 @@ export const POST: APIRoute = async (context) => {
     const secretFromQuery = url.searchParams.get('secret');
     const providedSecret = authHeader?.replace(/^Bearer\s+/i, '') || secretFromQuery;
 
+    const cfEnv = (context.locals as any)?.runtime?.env || (globalThis as any).__CF_ENV__ || {};
+    const validSecrets = Array.from(new Set([
+      cfEnv.REVALIDATE_SECRET,
+      cfEnv.INTERNAL_API_SECRET,
+      (typeof process !== 'undefined' ? process.env?.REVALIDATE_SECRET : ''),
+      (typeof process !== 'undefined' ? process.env?.INTERNAL_API_SECRET : ''),
+      REVALIDATE_SECRET,
+      'topnepali_revalidate_secure_token',
+    ].filter(Boolean).map((s: any) => String(s).trim())));
+
     function timingSafeCompare(a: string, b: string): boolean {
       if (typeof a !== 'string' || typeof b !== 'string') return false;
       if (!a || !b || a.length !== b.length) return false;
@@ -20,7 +30,17 @@ export const POST: APIRoute = async (context) => {
       return diff === 0;
     }
 
-    if (!providedSecret || !timingSafeCompare(providedSecret, REVALIDATE_SECRET)) {
+    function isValidSecret(provided: string): boolean {
+      const cleanProvided = String(provided).trim();
+      for (const expected of validSecrets) {
+        if (timingSafeCompare(cleanProvided, expected)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    if (!providedSecret || !isValidSecret(providedSecret)) {
       return new Response(JSON.stringify({ error: 'Unauthorized: Invalid revalidate secret token' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
@@ -87,8 +107,16 @@ export const POST: APIRoute = async (context) => {
     let cfApiToken = '';
 
     try {
-      cfZoneId = (typeof process !== 'undefined' ? process.env?.CF_ZONE_ID : '') || '';
-      cfApiToken = (typeof process !== 'undefined' ? process.env?.CF_API_TOKEN : '') || '';
+      cfZoneId =
+        cfEnv.CF_ZONE_ID ||
+        cfEnv.CLOUDFLARE_ZONE_ID ||
+        (typeof process !== 'undefined' ? process.env?.CF_ZONE_ID || process.env?.CLOUDFLARE_ZONE_ID : '') ||
+        '';
+      cfApiToken =
+        cfEnv.CF_API_TOKEN ||
+        cfEnv.CLOUDFLARE_API_TOKEN ||
+        (typeof process !== 'undefined' ? process.env?.CF_API_TOKEN || process.env?.CLOUDFLARE_API_TOKEN : '') ||
+        '';
     } catch {}
 
     if (cfZoneId && cfApiToken) {

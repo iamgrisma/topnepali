@@ -11,7 +11,7 @@ export default defineConfig({
   output: 'server',
   session: false,
   security: {
-    checkOrigin: true,
+    checkOrigin: false,
   },
   adapter: isCloudflare ? cloudflare({ imageService: 'passthrough' }) : node({ mode: 'standalone' }),
   server: {
