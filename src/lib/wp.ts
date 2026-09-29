@@ -657,21 +657,74 @@ export async function getAllPostsForSitemap(): Promise<Array<{ slug: string; las
 }
 
 /**
- * Query WordPress Rank Math redirection for a non-post slug
+ * Query WordPress Rank Math redirection for any slug
+ * Sends a HEAD request to the WordPress backend; if Rank Math has an active 301/302 redirect,
+ * returns the target URL and status code.
  */
 export async function getRankMathRedirection(slug: string): Promise<{ redirect_url: string; redirect_type: number } | null> {
+  const cleanSlug = slug.replace(/^\/+|\/+$/g, '');
+  if (!cleanSlug) return null;
+
+  const cacheKey = `rm_redirect:${cleanSlug}`;
+  const now = Date.now();
+  const cached = cache.get(cacheKey);
+  if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
+    return cached.data;
+  }
+
   const base = getWpBaseUrl();
-  const url = `${base}/wp-json/headless/v1/redirection?slug=${encodeURIComponent(slug)}`;
   try {
+    const res = await fetch(`${base}/${encodeURIComponent(cleanSlug)}`, {
+      method: 'HEAD',
+      redirect: 'manual',
+      signal: AbortSignal.timeout(3000),
+      headers: {
+        'User-Agent': 'TopNepali-Headless-Astro/1.0',
+      },
+      cf: {
+        cacheTtl: 300,
+        cacheEverything: true,
+      } as any,
+    });
+
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('location');
+      const redirectBy = res.headers.get('x-redirect-by') || '';
+
+      if (location && redirectBy.toLowerCase().includes('rank math')) {
+        const target = location.replace(/^https?:\/\/(?:wp\.)?topnepali\.com/i, '');
+        const cleanTarget = (target || location).replace(/^\/+|\/+$/g, '');
+        if (cleanTarget !== cleanSlug) {
+          const result = {
+            redirect_url: target || location,
+            redirect_type: res.status,
+          };
+          cache.set(cacheKey, { data: result, timestamp: now });
+          return result;
+        }
+      }
+    }
+  } catch (err) {
+    // If request timed out or network error, silently fall through
+  }
+
+  // Fallback to headless plugin endpoint if available
+  try {
+    const url = `${base}/wp-json/headless/v1/redirection?slug=${encodeURIComponent(cleanSlug)}`;
     const { data } = await fetchWithCache<{ redirect_url?: string; redirect_type?: number }>(url, 300);
     if (data && data.redirect_url) {
-      return {
-        redirect_url: data.redirect_url,
-        redirect_type: data.redirect_type || 301,
-      };
+      const cleanTarget = data.redirect_url.replace(/^https?:\/\/(?:wp\.)?topnepali\.com/i, '').replace(/^\/+|\/+$/g, '');
+      if (cleanTarget !== cleanSlug) {
+        const result = {
+          redirect_url: data.redirect_url.replace(/^https?:\/\/(?:wp\.)?topnepali\.com/i, ''),
+          redirect_type: data.redirect_type || 301,
+        };
+        cache.set(cacheKey, { data: result, timestamp: now });
+        return result;
+      }
     }
-    return null;
-  } catch {
-    return null;
-  }
+  } catch {}
+
+  cache.set(cacheKey, { data: null, timestamp: now });
+  return null;
 }

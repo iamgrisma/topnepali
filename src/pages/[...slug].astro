@@ -36,36 +36,40 @@ const KNOWN_PAGES = new Set([
   'terms', 'terms-and-conditions', 'disclaimer', 'dmca', 'sitemap'
 ]);
 
-let post = null;
-let page = null;
+const isKnownPage = KNOWN_PAGES.has(cleanSlug.toLowerCase());
 
-if (KNOWN_PAGES.has(cleanSlug.toLowerCase())) {
+// Query dynamic Rank Math redirection and content concurrently
+const [rmRedirect, initialContent] = await Promise.all([
+  getRankMathRedirection(cleanSlug),
+  isKnownPage ? getPageBySlug(cleanSlug) : getPostBySlug(cleanSlug),
+]);
+
+// 1. If WordPress / Rank Math has configured a redirection for this slug, dynamically redirect
+if (rmRedirect?.redirect_url) {
+  const status = rmRedirect.redirect_type === 302 ? 302 : 301;
+  return Astro.redirect(rmRedirect.redirect_url, status);
+}
+
+let post = isKnownPage ? null : initialContent;
+let page = isKnownPage ? initialContent : null;
+
+if (!post && !page && !isKnownPage) {
   page = await getPageBySlug(cleanSlug);
-} else {
-  post = await getPostBySlug(cleanSlug);
-  if (!post) {
-    page = await getPageBySlug(cleanSlug);
-  }
 }
 
 // Prepare post metadata
 const isArticle = Boolean(post);
 const item = post || page;
 
-// 1. If post or page has Rank Math redirection configured, dynamically forward to destination
+// 2. If post or page has Rank Math redirection configured in SEO metadata, dynamically forward
 if (item?.seo?.redirect_url) {
-  const target = item.seo.redirect_url;
+  const target = item.seo.redirect_url.replace(/^https?:\/\/(?:wp\.)?topnepali\.com/i, '');
   const status = item.seo.redirect_type === 302 ? 302 : 301;
   return Astro.redirect(target, status);
 }
 
-// 2. If neither post nor page exists, check for standalone Rank Math redirection before 404
+// 3. If neither post nor page exists, set 404 status
 if (!post && !page) {
-  const rmRedirect = await getRankMathRedirection(cleanSlug);
-  if (rmRedirect?.redirect_url) {
-    const status = rmRedirect.redirect_type === 302 ? 302 : 301;
-    return Astro.redirect(rmRedirect.redirect_url, status);
-  }
   Astro.response.status = 404;
 }
 
