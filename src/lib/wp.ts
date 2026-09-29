@@ -137,11 +137,11 @@ export async function getPosts(options: GetPostsOptions = {}): Promise<Paginatio
     orderby,
   });
 
-  // Prune unused heavy content.rendered for list queries (drastically reduces JSON payload size)
+  // Prune unused heavy content.rendered, head, and seo for list queries (drastically reduces JSON payload size and DB work)
   if (fields) {
     params.set('_fields', fields);
   } else {
-    params.set('_fields', 'id,date,modified,slug,status,type,link,title,excerpt,featured_media,categories,tags,_links,_embedded,head,seo');
+    params.set('_fields', 'id,date,modified,slug,status,type,link,title,excerpt,featured_media,categories,tags,_links,_embedded');
   }
 
   if (category) {
