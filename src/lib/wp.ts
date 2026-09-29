@@ -419,3 +419,52 @@ export function decodeHtmlEntities(text: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&#([0-9]+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)));
 }
+
+/**
+ * Optimize and debloat WordPress post/page HTML content:
+ * - Strips Gutenberg comment markers (<!-- wp:... --> and <!-- /wp:... -->)
+ * - Removes empty paragraphs (<p>&nbsp;</p>, <p></p>, <p><br></p>)
+ * - Strips legacy inline font-family, font-size, and conflicting color styles
+ * - Injects loading="lazy" and decoding="async" to images missing it
+ * - Wraps <table> in an accessible, responsive overflow container
+ * - Normalizes excessive line breaks
+ */
+export function optimizeWpHtml(rawHtml: string): string {
+  if (!rawHtml) return '';
+
+  let html = rawHtml;
+
+  // 1. Remove WordPress Gutenberg block comments
+  html = html.replace(/<!--\s*\/?wp:[^>]*-->/gi, '');
+
+  // 2. Remove empty paragraphs and line breaks
+  html = html.replace(/<p>\s*(?:&nbsp;|<br\s*\/?>|\s)*<\/p>/gi, '');
+
+  // 3. Strip inline style attributes that override clean typography
+  html = html.replace(/\s*style="([^"]*)"/gi, (match, styleContent) => {
+    const hasAlign = styleContent.match(/text-align:\s*[^;]+/i);
+    return hasAlign ? ` style="${hasAlign[0]}"` : '';
+  });
+
+  // 4. Optimize <img> tags: ensure loading="lazy" and decoding="async"
+  html = html.replace(/<img\b([^>]*?)>/gi, (match, attrs) => {
+    let newAttrs = attrs;
+    if (!/loading\s*=/i.test(newAttrs)) {
+      newAttrs += ' loading="lazy"';
+    }
+    if (!/decoding\s*=/i.test(newAttrs)) {
+      newAttrs += ' decoding="async"';
+    }
+    return `<img${newAttrs}>`;
+  });
+
+  // 5. Wrap <table> tags in responsive container
+  html = html.replace(/<table\b([\s\S]*?)<\/table>/gi, (match) => {
+    return `<div class="overflow-x-auto my-6 rounded-lg border border-slate-200 shadow-2xs">${match}</div>`;
+  });
+
+  // 6. Clean up duplicate line breaks
+  html = html.replace(/(<br\s*\/?>){3,}/gi, '<br><br>');
+
+  return html.trim();
+}

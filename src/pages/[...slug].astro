@@ -13,7 +13,8 @@ import {
   getPostAuthor,
   getPostCategories,
   getPostTags,
-  stripHtml
+  stripHtml,
+  optimizeWpHtml
 } from '../lib/wp';
 
 const rawSlug = Astro.params.slug;
@@ -277,8 +278,8 @@ const currentUrl = Astro.url.href;
             </figure>
           )}
 
-          <!-- Dynamic WordPress Content -->
-          <div class="entry-content mb-8" set:html={item?.content.rendered} />
+          <!-- Dynamic WordPress Content (Sanitized & Debloated) -->
+          <div class="entry-content mb-8" set:html={optimizeWpHtml(item?.content?.rendered || '')} />
 
           <!-- Tags List -->
           {tags.length > 0 && (

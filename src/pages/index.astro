@@ -1,87 +1,458 @@
 ---
-// index.astro — Dynamic SSR Homepage for TopNepali Headless WordPress
+// index.astro — High-Performance Mother Portal Landing Page for TopNepali Ecosystem
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PostCard from '../components/PostCard.astro';
-import Sidebar from '../components/Sidebar.astro';
-import Pagination from '../components/Pagination.astro';
-import { getPosts, getSiteInfo } from '../lib/wp';
+import { getPosts, getSiteInfo, getPostFeaturedImage, formatDate, estimateReadingTime } from '../lib/wp';
 
-// Parse query params for dynamic SSR pagination
-const pageParam = Astro.url.searchParams.get('page');
-const currentPage = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
-const perPage = 10;
-
-// Instant synchronous site info (zero network latency)
+// Instant synchronous site metadata (zero network latency)
 const siteInfo = getSiteInfo();
 
-// Fetch posts directly with pruned fields
-const postsResult = await getPosts({ page: currentPage, perPage });
+// Dynamic fetch of curated latest articles for the mother portal (pruned payload)
+const postsResult = await getPosts({ perPage: 6 });
+const latestPosts = postsResult.data;
+const leadPost = latestPosts[0] || null;
+const secondaryPosts = latestPosts.slice(1, 3);
+const tertiaryPosts = latestPosts.slice(3, 6);
 
-const { data: posts, total, totalPages } = postsResult;
-const isFirstPage = currentPage === 1;
-const featuredPost = isFirstPage && posts.length > 0 ? posts[0] : null;
-const streamPosts = isFirstPage ? posts.slice(1) : posts;
+// Flagship Subdomain Applications & Integrated Ecosystem Tools
+const ecosystemApps = [
+  {
+    id: 'typing',
+    title: 'Nepali Typing Platform',
+    badge: 'Utility App',
+    url: 'https://typing.topnepali.com',
+    description: 'Bilingual Unicode & Preeti speed testing with real-time accuracy metrics and transliteration.',
+    icon: 'keyboard',
+    highlight: 'Active Web App'
+  },
+  {
+    id: 'fonts',
+    title: 'FontsDir Directory',
+    badge: 'Typography',
+    url: 'https://fonts.topnepali.com',
+    description: 'Comprehensive open-source repository of traditional and modern Devanagari web fonts.',
+    icon: 'type',
+    highlight: 'Open Typefaces'
+  },
+  {
+    id: 'share',
+    title: 'Flashare Transfer',
+    badge: 'P2P Transfer',
+    url: 'https://share.topnepali.com',
+    description: 'Encrypted browser-to-browser direct peer file sharing with zero file size limits or logins.',
+    icon: 'zap',
+    highlight: 'P2P Encrypted'
+  },
+  {
+    id: 'tools',
+    title: 'TopTools Suite',
+    badge: 'Daily Helpers',
+    url: 'https://topnepali.com/tools',
+    description: 'Official BS to AD Bikram Sambat date converter, NRB live exchange rates, and calculators.',
+    icon: 'tool',
+    highlight: 'Date & FX Rates'
+  },
+  {
+    id: 'election',
+    title: 'Election Nepal',
+    badge: 'Civic Data',
+    url: 'https://election.topnepali.com',
+    description: 'Interactive constituency boundary maps, historical election results, and voter turnout records.',
+    icon: 'landmark',
+    highlight: 'Civic Intelligence'
+  },
+  {
+    id: 'constitution',
+    title: 'Constitution of Nepal',
+    badge: 'Legal Archive',
+    url: 'https://constitution.topnepali.com',
+    description: 'Full-text searchable constitutional articles, schedules, and fundamental civic rights index.',
+    icon: 'scale',
+    highlight: 'Searchable Legal Text'
+  }
+];
+
+// Core Knowledge Hubs
+const knowledgeHubs = [
+  {
+    title: 'TU & Exam Routines',
+    slug: 'exam-routines',
+    count: '18+ Routines',
+    desc: 'Tribhuvan University Bachelor 1st/2nd year, NEB, and Masters exam schedules.',
+    url: '/category/exam-routines'
+  },
+  {
+    title: 'Career & Vacancies',
+    slug: 'vacancy',
+    count: '8+ Openings',
+    desc: 'Verified public sector notices, bank recruitment calls, and job requirements.',
+    url: '/category/vacancy'
+  },
+  {
+    title: 'Loksewa Aayog Hub',
+    slug: 'loksewa',
+    count: 'Civil Service',
+    desc: 'Official exam dates, curriculum syllabi, examination centers, and GK prep.',
+    url: '/category/loksewa'
+  },
+  {
+    title: 'Education & Forms',
+    slug: 'education',
+    count: '19+ Guides',
+    desc: 'University registration dates, examination forms, and campus updates.',
+    url: '/category/education'
+  }
+];
 ---
 
 <BaseLayout
-  title={`${siteInfo.name} — Covering Top Nepali News, Updates & Educational Information`}
-  description={siteInfo.description}
+  title={`${siteInfo.name} — The Integrated Mother Portal for Nepali Knowledge, Tools & Civic Intelligence`}
+  description="Nepal's central digital portal integrating educational exam routines, career vacancies, open civic archives, typography, and privacy-first web utilities."
+  canonical="https://topnepali.com/"
 >
-  <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-8">
-    <div class="flex flex-col lg:flex-row gap-8 items-start">
-      
-      <!-- Primary Content Area (~68%) -->
-      <div class="w-full lg:w-[68%] min-w-0">
+  <!-- Hero Section: The Mother Portal Gateway -->
+  <section class="portal-hero border-b border-slate-200 bg-linear-to-b from-slate-50 via-white to-slate-50/50 py-12 sm:py-16 lg:py-20">
+    <div class="max-w-[1280px] mx-auto px-4">
+      <div class="text-center max-w-3xl mx-auto">
         
-        <!-- Featured Lead Post (on Page 1) -->
-        {featuredPost && (
-          <section class="mb-8" aria-label="Featured Story">
-            <PostCard post={featuredPost} featured={true} />
-          </section>
-        )}
-
-        <!-- Section Title: Recently Published -->
-        <div class="flex items-center justify-between pb-3 mb-6 border-b-2 border-slate-200">
-          <h1 class="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
-            <span>{isFirstPage ? 'Recently Published' : `Articles — Page ${currentPage}`}</span>
-          </h1>
-          <span class="text-xs text-slate-500 font-mono">
-            {total > 0 ? `${total} Total Posts` : 'Latest Updates'}
-          </span>
+        <!-- Portal Pill Badge -->
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold tracking-wide uppercase mb-6">
+          <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+          <span>Integrated Digital Ecosystem</span>
         </div>
 
-        <!-- Post Stream Grid -->
-        {streamPosts.length > 0 ? (
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {streamPosts.map((post) => (
-              <PostCard post={post} />
-            ))}
+        <!-- Headline -->
+        <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.1] mb-6">
+          The Central Mother Portal for <span class="text-indigo-600">Nepali Intelligence</span> & Utilities
+        </h1>
+
+        <!-- Subtitle -->
+        <p class="text-base sm:text-lg text-slate-600 leading-relaxed mb-8 max-w-2xl mx-auto">
+          Bridging university exam routines, career vacancies, open civic data, typography, and developer utilities under a unified, high-speed, privacy-first platform.
+        </p>
+
+        <!-- Quick Search Gateway Form -->
+        <form action="/search" method="get" class="max-w-xl mx-auto mb-8">
+          <div class="relative flex items-center shadow-xs rounded-xl overflow-hidden border border-slate-300 focus-within:border-indigo-600 focus-within:ring-2 focus-within:ring-indigo-100 bg-white transition">
+            <div class="pl-4 text-slate-400">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </div>
+            <input
+              type="search"
+              name="q"
+              placeholder="Search routines, vacancies, tools, or articles..."
+              required
+              class="w-full py-3.5 pl-3 pr-24 text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden"
+            />
+            <button
+              type="submit"
+              class="absolute right-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition"
+            >
+              Search
+            </button>
           </div>
-        ) : (
-          <div class="p-8 text-center bg-white rounded-xl border border-slate-200">
-            <p class="text-slate-600 text-sm">
-              No articles found on this page.
+        </form>
+
+        <!-- Portal Value Pills -->
+        <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs text-slate-500 font-medium">
+          <div class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span>6 Integrated Apps</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span>TU & Loksewa Feeds</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span>Sub-80ms Edge Speed</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span>Zero-Tracker Privacy</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 1: Subdomain Applications Ecosystem Grid -->
+  <section class="max-w-[1280px] mx-auto px-4 py-12 sm:py-16">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 pb-4 border-b border-slate-200">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 block mb-1">
+          Connected Ecosystem
+        </span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          TopNepali Subdomain Network
+        </h2>
+      </div>
+      <p class="text-xs sm:text-sm text-slate-500 max-w-md">
+        Dedicated standalone web applications and utilities hosted across the TopNepali infrastructure.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {ecosystemApps.map((app) => (
+        <a
+          href={app.url}
+          target={app.url.startsWith('http') ? '_blank' : '_self'}
+          rel={app.url.startsWith('http') ? 'noopener noreferrer' : ''}
+          class="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-indigo-400 hover:shadow-md transition duration-200 flex flex-col justify-between"
+        >
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 group-hover:bg-indigo-600 group-hover:text-white transition duration-200">
+                {app.icon === 'keyboard' && (
+                  <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <line x1="6" y1="8" x2="6" y2="8.01" />
+                    <line x1="10" y1="8" x2="10" y2="8.01" />
+                    <line x1="14" y1="8" x2="14" y2="8.01" />
+                    <line x1="18" y1="8" x2="18" y2="8.01" />
+                    <line x1="6" y1="12" x2="6" y2="12.01" />
+                    <line x1="10" y1="12" x2="10" y2="12.01" />
+                    <line x1="14" y1="12" x2="14" y2="12.01" />
+                    <line x1="18" y1="12" x2="18" y2="12.01" />
+                    <line x1="7" y1="16" x2="17" y2="16" />
+                  </svg>
+                )}
+                {app.icon === 'type' && (
+                  <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="4 7 4 4 20 4 20 7" />
+                    <line x1="9" y1="20" x2="15" y2="20" />
+                    <line x1="12" y1="4" x2="12" y2="20" />
+                  </svg>
+                )}
+                {app.icon === 'zap' && (
+                  <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg>
+                )}
+                {app.icon === 'tool' && (
+                  <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                  </svg>
+                )}
+                {app.icon === 'landmark' && (
+                  <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="21" x2="21" y2="21" />
+                    <line x1="5" y1="21" x2="5" y2="10" />
+                    <line x1="19" y1="21" x2="19" y2="10" />
+                    <path d="M12 3l9 7H3l9-7z" />
+                  </svg>
+                )}
+                {app.icon === 'scale' && (
+                  <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
+                    <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
+                    <path d="M7 21h10"/>
+                    <path d="M12 3v18"/>
+                    <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>
+                  </svg>
+                )}
+              </div>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">
+                {app.badge}
+              </span>
+            </div>
+
+            <h3 class="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition mb-2">
+              {app.title}
+            </h3>
+            <p class="text-xs text-slate-600 leading-relaxed mb-4">
+              {app.description}
             </p>
-            <a href="/" class="mt-3 inline-block text-xs font-semibold text-indigo-600 hover:underline">
-              Return to Homepage
+          </div>
+
+          <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-indigo-600">
+            <span>{app.highlight}</span>
+            <span class="group-hover:translate-x-1 transition duration-150">&rarr;</span>
+          </div>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <!-- Section 2: Core Knowledge Hubs Matrix -->
+  <section class="bg-slate-50/70 border-y border-slate-200/80 py-12 sm:py-16">
+    <div class="max-w-[1280px] mx-auto px-4">
+      <div class="mb-8">
+        <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 block mb-1">
+          Knowledge Portals
+        </span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          Verified National Information Verticals
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {knowledgeHubs.map((hub) => (
+          <a
+            href={hub.url}
+            class="group p-5 rounded-xl bg-white border border-slate-200 hover:border-indigo-400 hover:shadow-xs transition"
+          >
+            <div class="flex items-center justify-between text-xs font-mono text-slate-400 mb-3">
+              <span>Vertical</span>
+              <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-semibold text-[11px]">
+                {hub.count}
+              </span>
+            </div>
+            <h3 class="font-bold text-slate-900 group-hover:text-indigo-600 transition text-base mb-1.5">
+              {hub.title}
+            </h3>
+            <p class="text-xs text-slate-500 leading-relaxed">
+              {hub.desc}
+            </p>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 3: Latest Dispatches From The Blog -->
+  <section class="max-w-[1280px] mx-auto px-4 py-12 sm:py-16">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 pb-4 border-b border-slate-200">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 block mb-1">
+          Editorial Newsroom
+        </span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          Latest Dispatches & Guides
+        </h2>
+      </div>
+      <a
+        href="/blogs"
+        class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 transition"
+      >
+        <span>View All Articles in Blog</span>
+        <span>&rarr;</span>
+      </a>
+    </div>
+
+    <!-- Lead Spotlight Post (if available) -->
+    {leadPost && (
+      <div class="mb-8">
+        {(() => {
+          const leadImg = getPostFeaturedImage(leadPost);
+          return (
+            <article class="p-6 sm:p-8 rounded-2xl bg-white border border-slate-200 hover:border-indigo-400 transition shadow-xs flex flex-col lg:flex-row gap-6 items-center">
+              {leadImg && (
+                <a href={`/${leadPost.slug}`} class="w-full lg:w-1/2 aspect-video overflow-hidden rounded-xl bg-slate-100 shrink-0">
+                  <img
+                    src={leadImg.url}
+                    alt={leadImg.alt}
+                    class="w-full h-full object-cover hover:scale-105 transition duration-300"
+                    loading="eager"
+                  />
+                </a>
+              )}
+              <div class="flex-1">
+                <div class="flex items-center gap-2 text-xs text-slate-400 mb-3">
+                  <span class="font-bold uppercase tracking-wider text-indigo-600">Featured Dispatch</span>
+                  <span>&bull;</span>
+                  <time datetime={leadPost.date}>{formatDate(leadPost.date)}</time>
+                  <span>&bull;</span>
+                  <span>{estimateReadingTime(leadPost.content?.rendered || '')}</span>
+                </div>
+                <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-3 leading-snug">
+                  <a href={`/${leadPost.slug}`} class="hover:text-indigo-600 transition">
+                    {leadPost.title.rendered}
+                  </a>
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6 line-clamp-3">
+                  {(leadPost.excerpt?.rendered || '').replace(/<[^>]+>/g, '').trim()}
+                </p>
+                <a
+                  href={`/${leadPost.slug}`}
+                  class="inline-flex items-center gap-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition"
+                >
+                  <span>Read Full Article</span>
+                  <span>&rarr;</span>
+                </a>
+              </div>
+            </article>
+          );
+        })()}
+      </div>
+    )}
+
+    <!-- Secondary & Tertiary Grid -->
+    {secondaryPosts.length > 0 && (
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <!-- 2 Secondary Cards (each spans 2 columns on lg) -->
+        {secondaryPosts.map((post) => {
+          const img = getPostFeaturedImage(post);
+          return (
+            <article class="lg:col-span-2 p-5 rounded-xl bg-white border border-slate-200 hover:border-indigo-400 hover:shadow-xs transition flex flex-col justify-between">
+              <div>
+                {img && (
+                  <a href={`/${post.slug}`} class="aspect-video overflow-hidden rounded-lg bg-slate-100 block mb-3">
+                    <img
+                      src={img.url}
+                      alt={img.alt}
+                      class="w-full h-full object-cover hover:scale-105 transition duration-200"
+                      loading="lazy"
+                    />
+                  </a>
+                )}
+                <time class="text-[11px] text-slate-400 block mb-1.5">{formatDate(post.date)}</time>
+                <h4 class="font-bold text-sm sm:text-base text-slate-900 hover:text-indigo-600 transition line-clamp-2 leading-snug mb-2">
+                  <a href={`/${post.slug}`}>
+                    {post.title.rendered}
+                  </a>
+                </h4>
+                <p class="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                  {(post.excerpt?.rendered || '').replace(/<[^>]+>/g, '').trim()}
+                </p>
+              </div>
+              <div class="pt-3 mt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                <span>{estimateReadingTime(post.content?.rendered || '')}</span>
+                <a href={`/${post.slug}`} class="font-semibold text-indigo-600 hover:underline">Read &rarr;</a>
+              </div>
+            </article>
+          );
+        })}
+
+        <!-- Tertiary Compact List (spans 1 column on lg) -->
+        {tertiaryPosts.length > 0 && (
+          <div class="lg:col-span-1 flex flex-col gap-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+              More Updates
+            </span>
+            {tertiaryPosts.map((post) => (
+              <a
+                href={`/${post.slug}`}
+                class="group p-3 rounded-lg border border-slate-200 bg-white hover:border-indigo-400 transition block"
+              >
+                <h5 class="text-xs font-semibold text-slate-800 group-hover:text-indigo-600 transition line-clamp-2 leading-snug">
+                  {post.title.rendered}
+                </h5>
+                <time class="text-[10px] text-slate-400 block mt-1">
+                  {formatDate(post.date)}
+                </time>
+              </a>
+            ))}
+            <a
+              href="/blogs"
+              class="text-center py-2 px-3 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition"
+            >
+              Browse All &rarr;
             </a>
           </div>
         )}
-
-        <!-- Dynamic Pagination -->
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          baseUrl="/"
-        />
       </div>
-
-      <!-- Right Sidebar (~32%) -->
-      <div class="w-full lg:w-[32%] shrink-0">
-        <Sidebar excludePostId={featuredPost?.id} recentPosts={posts} />
-      </div>
-
-    </div>
-  </div>
+    )}
+  </section>
 </BaseLayout>

@@ -48,6 +48,10 @@ export const POST: APIRoute = async (context) => {
       purgeUrls.push(`${base}/rss.xml`);
       purgeUrls.push(`${base}/sitemap.xml`);
       purgeUrls.push(`${base}/api/posts`);
+      purgeUrls.push(`${base}/blogs`);
+      purgeUrls.push(`${base}/blogs/`);
+      purgeUrls.push(`${base}/blog`);
+      purgeUrls.push(`${base}/blog/`);
 
       if (slug) {
         const cleanSlug = String(slug).replace(/^\/+|\/+$/g, '');
@@ -122,6 +126,7 @@ export const POST: APIRoute = async (context) => {
       const warmTargets: string[] = [];
       for (const base of baseUrls) {
         warmTargets.push(`${base}/`);
+        warmTargets.push(`${base}/blogs`);
         if (slug) {
           warmTargets.push(`${base}/${String(slug).replace(/^\/+|\/+$/g, '')}`);
         }
