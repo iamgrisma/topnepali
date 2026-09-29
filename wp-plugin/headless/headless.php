@@ -36,10 +36,6 @@ class TopNepali_Headless_Plugin {
         if (is_admin()) {
             add_action('admin_menu', array($this, 'register_admin_menu'));
             add_action('admin_init', array($this, 'register_settings'));
-            add_filter('site_transient_update_plugins', array($this, 'check_plugin_update'));
-
-            // Block WordPress.org from ever checking or overriding this private in-house plugin
-            add_filter('http_request_args', array($this, 'prevent_wporg_update_check'), 10, 2);
         }
 
         // Preview & View link rewrites
@@ -196,50 +192,6 @@ class TopNepali_Headless_Plugin {
         return $url;
     }
 
-    /**
-     * Prevent WordPress.org from overriding this plugin with directory plugins
-     * Strips topnepali-headless from the update-check payload sent to api.wordpress.org
-     */
-    public function prevent_wporg_update_check($args, $url) {
-        if (strpos($url, 'api.wordpress.org/plugins/update-check') === false) {
-            return $args;
-        }
-        if (empty($args['body']['plugins'])) {
-            return $args;
-        }
-        $plugins = json_decode($args['body']['plugins'], true);
-        $plugin_file = plugin_basename(__FILE__);
-        if (isset($plugins['plugins'][$plugin_file])) {
-            unset($plugins['plugins'][$plugin_file]);
-            $args['body']['plugins'] = wp_json_encode($plugins);
-        }
-        return $args;
-    }
-
-    /**
-     * Check for plugin updates against Cloudflare Edge API / GitHub
-     */
-    public function check_plugin_update($transient) {
-        if (empty($transient->checked)) {
-            return $transient;
-        }
-
-        $remote_version = $this->get_remote_version();
-        if ($remote_version && version_compare(self::VERSION, $remote_version, '<')) {
-            $plugin_file = plugin_basename(__FILE__);
-            $obj = new stdClass();
-            $obj->slug = 'topnepali-headless';
-            $obj->plugin = $plugin_file;
-            $obj->new_version = $remote_version;
-            $obj->url = $this->get_frontend_url();
-            $obj->package = $this->get_update_endpoint('download');
-            $obj->tested = '6.7';
-            $obj->requires = '5.6';
-            $transient->response[$plugin_file] = $obj;
-        }
-
-        return $transient;
-    }
 
     /**
      * Get latest remote version from Cloudflare Edge distribution API
