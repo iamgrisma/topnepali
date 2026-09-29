@@ -3,6 +3,21 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "./dist"
 
+# ==============================================================================
+# CRITICAL SECURITY POLICY — DO NOT EDIT WITHOUT READING:
+# NEVER PUT SECRETS OR PRIVATE TOKENS IN THIS FILE!
+#
+# DO NOT add REVALIDATE_SECRET, CF_API_TOKEN, CLOUDFLARE_ZONE_ID, or any other
+# sensitive credentials to this [vars] section or anywhere in wrangler.toml!
+#
+# WHY:
+# 1. This file is tracked in git and publicly accessible in version control.
+# 2. Hardcoding variables in [vars] can wipe or override encrypted secrets configured
+#    in the Cloudflare Pages Dashboard.
+# 3. All secrets (REVALIDATE_SECRET, API tokens, webhook keys) MUST ONLY be configured
+#    in the Cloudflare Pages Dashboard: Settings -> Environment Variables.
+# ==============================================================================
+
 [vars]
 URL = "https://topnepali.com"
 WORDPRESS_URL = "https://wp.topnepali.com"
