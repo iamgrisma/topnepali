@@ -50,51 +50,12 @@ const workerContent = `import serverEntry from './server/entry.mjs';
 export default {
   async fetch(req, env, ctx) {
     globalThis.__CF_ENV__ = env;
-
-    const url = new URL(req.url);
-    const method = req.method;
-    const isWebhookOrApi = url.pathname.startsWith('/api/');
-    const isSearch = url.pathname === '/search' || url.searchParams.has('q') || url.searchParams.has('s');
-    const isCacheable = (method === 'GET' || method === 'HEAD') && !isWebhookOrApi && !isSearch;
-
-    const cache = (typeof caches !== 'undefined' && caches.default) ? caches.default : null;
-
-    if (cache && isCacheable) {
-      try {
-        const cached = await cache.match(req);
-        if (cached) {
-          const hit = new Response(cached.body, cached);
-          hit.headers.set('X-Edge-Cache', 'HIT');
-          return hit;
-        }
-      } catch {}
-    }
-
-    const response = await serverEntry.fetch(req, env, ctx);
-
-    if (cache && isCacheable && response.status === 200) {
-      try {
-        const clone = response.clone();
-        let toCache = clone;
-        if (clone.headers.has('Set-Cookie')) {
-          const cleanHeaders = new Headers(clone.headers);
-          cleanHeaders.delete('Set-Cookie');
-          toCache = new Response(clone.body, {
-            status: clone.status,
-            statusText: clone.statusText,
-            headers: cleanHeaders,
-          });
-        }
-        ctx.waitUntil(cache.put(req, toCache));
-      } catch {}
-    }
-
-    return response;
+    return serverEntry.fetch(req, env, ctx);
   }
 };
 `;
 fs.writeFileSync(workerFile, workerContent);
-console.log('[prepare-pages] Created dist/_worker.js with edge cache fetch handler');
+console.log('[prepare-pages] Created dist/_worker.js delegating to serverEntry');
 
 // 3. Ensure _routes.json excludes /_astro/* for optimal static asset serving
 const routesJsonFile = path.join(distDir, '_routes.json');

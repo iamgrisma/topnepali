@@ -5,7 +5,7 @@ pages_build_output_dir = "./dist"
 
 [vars]
 URL = "https://topnepali.com"
-WORDPRESS_URL = "https://wp.topnepali.com"
+WORDPRESS_URL = "https://topnepali.com"
 PUBLIC_GA_ID = "G-K2R0GSQE0M"
 PUBLIC_GTM_ID = "GTM-MD2NWFJ"
 PUBLIC_ADSENSE_ID = "ca-pub-5410507143596599"
