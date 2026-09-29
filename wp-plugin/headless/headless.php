@@ -100,7 +100,25 @@ class TopNepali_Headless_Plugin {
         if ($post->post_status !== 'publish') return;
         if (!in_array($post->post_type, array('post', 'page'))) return;
 
-        $this->dispatch_revalidation($post->post_name, $post->post_type, $update ? 'update' : 'publish');
+        $extra_urls = array();
+        if ($post->post_type === 'post') {
+            // Category archives
+            $categories = get_the_category($post_id);
+            if (!empty($categories) && !is_wp_error($categories)) {
+                foreach ($categories as $cat) {
+                    $extra_urls[] = '/category/' . $cat->slug;
+                }
+            }
+            // Tag archives
+            $tags = get_the_tags($post_id);
+            if (!empty($tags) && !is_wp_error($tags)) {
+                foreach ($tags as $tag) {
+                    $extra_urls[] = '/tag/' . $tag->slug;
+                }
+            }
+        }
+
+        $this->dispatch_revalidation($post->post_name, $post->post_type, $update ? 'update' : 'publish', $extra_urls);
     }
 
     /**
@@ -109,7 +127,24 @@ class TopNepali_Headless_Plugin {
     public function on_trash_post($post_id) {
         $post = get_post($post_id);
         if (!$post) return;
-        $this->dispatch_revalidation($post->post_name, $post->post_type, 'delete');
+
+        $extra_urls = array();
+        if ($post->post_type === 'post') {
+            $categories = get_the_category($post_id);
+            if (!empty($categories) && !is_wp_error($categories)) {
+                foreach ($categories as $cat) {
+                    $extra_urls[] = '/category/' . $cat->slug;
+                }
+            }
+            $tags = get_the_tags($post_id);
+            if (!empty($tags) && !is_wp_error($tags)) {
+                foreach ($tags as $tag) {
+                    $extra_urls[] = '/tag/' . $tag->slug;
+                }
+            }
+        }
+
+        $this->dispatch_revalidation($post->post_name, $post->post_type, 'delete', $extra_urls);
     }
 
     /**

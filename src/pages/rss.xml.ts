@@ -13,10 +13,8 @@ function escapeXml(unsafe: string): string {
 
 export const GET: APIRoute = async () => {
   const siteUrl = SITE_URL;
-  const [siteInfo, postsResult] = await Promise.all([
-    getSiteInfo(),
-    getPosts({ perPage: 20 }),
-  ]);
+  const siteInfo = getSiteInfo();
+  const postsResult = await getPosts({ perPage: 20 });
 
   const items = postsResult.data
     .map((post) => {

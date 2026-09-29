@@ -2,7 +2,8 @@ import type { APIRoute } from 'astro';
 import { clearWpCache } from '../../lib/wp';
 import { SITE_URL, REVALIDATE_SECRET } from '../../config';
 
-export const POST: APIRoute = async ({ request, url }) => {
+export const POST: APIRoute = async (context) => {
+  const { request, url } = context;
   try {
     // 1. Authenticate webhook request
     const authHeader = request.headers.get('x-revalidate-secret') || request.headers.get('authorization');
@@ -33,11 +34,14 @@ export const POST: APIRoute = async ({ request, url }) => {
     const clearedCacheCount = clearWpCache(slug || undefined);
 
     // 4. Determine URLs to purge from Cloudflare Global Edge CDN
-    const siteUrl = SITE_URL;
+    const siteUrl = SITE_URL.replace(/\/+$/, '');
     const purgeUrls: string[] = [];
 
-    // Always purge the homepage because latest post feeds change on update
+    // Always purge the homepage and RSS/sitemap because latest post feeds change on update
     purgeUrls.push(`${siteUrl}/`);
+    purgeUrls.push(`${siteUrl}`);
+    purgeUrls.push(`${siteUrl}/rss.xml`);
+    purgeUrls.push(`${siteUrl}/sitemap.xml`);
     purgeUrls.push(`${siteUrl}/api/posts`);
 
     if (slug) {
@@ -48,14 +52,38 @@ export const POST: APIRoute = async ({ request, url }) => {
 
     if (Array.isArray(customUrls)) {
       for (const u of customUrls) {
-        const fullUrl = u.startsWith('http') ? u : `${siteUrl}/${u.replace(/^\/+/, '')}`;
-        if (!purgeUrls.includes(fullUrl)) {
-          purgeUrls.push(fullUrl);
-        }
+        const path = u.startsWith('/') ? u : `/${u}`;
+        const cleanPath = path.replace(/\/+$/, '');
+        const fullUrlNoSlash = `${siteUrl}${cleanPath}`;
+        const fullUrlWithSlash = `${siteUrl}${cleanPath}/`;
+        if (!purgeUrls.includes(fullUrlNoSlash)) purgeUrls.push(fullUrlNoSlash);
+        if (!purgeUrls.includes(fullUrlWithSlash)) purgeUrls.push(fullUrlWithSlash);
       }
     }
 
-    // 5. Native Cloudflare Worker Cache API Purge (Zero credentials / zero zone ID required)
+    // 5. Cloudflare Zone API Purge across all 300+ Edge POPs (if credentials configured)
+    let cfApiPurged = false;
+    const cfZoneId = (process.env.CF_ZONE_ID || (context.locals as any)?.runtime?.env?.CF_ZONE_ID || '').trim();
+    const cfApiToken = (process.env.CF_API_TOKEN || (context.locals as any)?.runtime?.env?.CF_API_TOKEN || '').trim();
+
+    if (cfZoneId && cfApiToken) {
+      try {
+        const cfRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${cfApiToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ files: purgeUrls }),
+        });
+        const cfJson: any = await cfRes.json();
+        cfApiPurged = Boolean(cfJson?.success);
+      } catch (cfErr) {
+        console.warn('[revalidate] Cloudflare Zone API purge warning:', cfErr);
+      }
+    }
+
+    // 6. Native Cloudflare Worker Cache API Purge
     let nativePurgedCount = 0;
     try {
       const globalCaches = (globalThis as any).caches;

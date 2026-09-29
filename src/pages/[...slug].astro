@@ -24,13 +24,23 @@ if (!rawSlug) {
 // Clean slug (handles any trailing slash without HTTP redirect)
 const cleanSlug = rawSlug.replace(/^\/+|\/+$/g, '');
 
-// Fetch Post or Page in parallel (eliminates sequential API waterfall)
-const [postResult, pageResult] = await Promise.allSettled([
-  getPostBySlug(cleanSlug),
-  getPageBySlug(cleanSlug),
+// Known static pages list to avoid sending duplicate post+page queries to WordPress
+const KNOWN_PAGES = new Set([
+  'about', 'about-us', 'contact', 'contact-us', 'privacy-policy', 'privacy',
+  'terms', 'terms-and-conditions', 'disclaimer', 'dmca', 'sitemap'
 ]);
-const post = postResult.status === 'fulfilled' ? postResult.value : null;
-const page = (!post && pageResult.status === 'fulfilled') ? pageResult.value : null;
+
+let post = null;
+let page = null;
+
+if (KNOWN_PAGES.has(cleanSlug.toLowerCase())) {
+  page = await getPageBySlug(cleanSlug);
+} else {
+  post = await getPostBySlug(cleanSlug);
+  if (!post) {
+    page = await getPageBySlug(cleanSlug);
+  }
+}
 
 // If neither exists, render 404 without redirect
 if (!post && !page) {

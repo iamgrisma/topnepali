@@ -11,11 +11,11 @@ const pageParam = Astro.url.searchParams.get('page');
 const currentPage = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
 const perPage = 10;
 
-// Dynamic fetch directly from WordPress REST API (No static pre-generation needed)
-const [postsResult, siteInfo] = await Promise.all([
-  getPosts({ page: currentPage, perPage }),
-  getSiteInfo(),
-]);
+// Instant synchronous site info (zero network latency)
+const siteInfo = getSiteInfo();
+
+// Fetch posts directly with pruned fields
+const postsResult = await getPosts({ page: currentPage, perPage });
 
 const { data: posts, total, totalPages } = postsResult;
 const isFirstPage = currentPage === 1;
@@ -79,7 +79,7 @@ const streamPosts = isFirstPage ? posts.slice(1) : posts;
 
       <!-- Right Sidebar (~32%) -->
       <div class="w-full lg:w-[32%] shrink-0">
-        <Sidebar excludePostId={featuredPost?.id} />
+        <Sidebar excludePostId={featuredPost?.id} recentPosts={posts} />
       </div>
 
     </div>

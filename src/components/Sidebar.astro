@@ -1,18 +1,25 @@
 ---
 // Sidebar.astro — Right sidebar widgets matching GeneratePress / TopNepali blog layout
-import { getCategories, getRecentPosts, formatDate, getPostFeaturedImage } from '../lib/wp';
+import { DEFAULT_TOP_CATEGORIES, getRecentPosts, formatDate, getPostFeaturedImage } from '../lib/wp';
+import type { WPPost, WPCategory } from '../types/wp';
 
 interface Props {
   excludePostId?: number;
+  recentPosts?: WPPost[];
+  categories?: WPCategory[];
 }
 
-const { excludePostId } = Astro.props;
+const { excludePostId, recentPosts: passedRecent, categories: passedCategories } = Astro.props;
 
-// Fetch live dynamic categories & recent posts
-const [categories, allRecent] = await Promise.all([
-  getCategories({ perPage: 12, hideEmpty: true }),
-  getRecentPosts(6),
-]);
+// Zero-latency layout resolution: use passed categories or instant top categories
+const categories = passedCategories && passedCategories.length > 0
+  ? passedCategories
+  : DEFAULT_TOP_CATEGORIES;
+
+// Use pre-fetched posts if provided by parent page, otherwise fetch pruned recent posts
+const allRecent = passedRecent && passedRecent.length > 0
+  ? passedRecent
+  : await getRecentPosts(6);
 
 const recentPosts = allRecent.filter((p) => p.id !== excludePostId).slice(0, 5);
 ---

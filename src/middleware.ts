@@ -54,15 +54,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
 
     // 7. Dynamic SSR HTML pages:
-    // Browser must revalidate (max-age=0, must-revalidate) so new deployments appear immediately.
-    // Cloudflare Edge CDN caches for 10 minutes with stale-while-revalidate for sub-15ms TTFB.
+    // - Visitor browser: max-age=0, must-revalidate (always contacts edge; instant update on purge)
+    // - Cloudflare Global Edge CDN: s-maxage=2592000 (30 days) with stale-while-revalidate=86400
+    //   Provides sub-15ms TTFB worldwide. On-demand webhooks (/api/revalidate) purge updated URLs.
     response.headers.set('Vary', 'Accept-Encoding');
     if (pathname === '/search' || url.searchParams.has('q') || url.searchParams.has('s')) {
-      response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=600');
+      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=300, stale-while-revalidate=600');
       response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=300, stale-while-revalidate=600');
     } else {
-      response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
-      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=3600, stale-while-revalidate=86400');
+      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=2592000, stale-while-revalidate=86400');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=2592000, stale-while-revalidate=86400');
     }
 
     // Standard security headers

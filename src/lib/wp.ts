@@ -74,26 +74,30 @@ async function fetchWithCache<T>(
   return result;
 }
 
+export const DEFAULT_TOP_CATEGORIES: WPCategory[] = [
+  { id: 26, name: 'Education', slug: 'education', count: 19, description: 'Education & Routines', link: '/category/education', taxonomy: 'category', parent: 0 },
+  { id: 29, name: 'Exam Routines', slug: 'exam-routines', count: 18, description: 'Exam Routines', link: '/category/exam-routines', taxonomy: 'category', parent: 0 },
+  { id: 30, name: 'Exam Form', slug: 'exam-form', count: 8, description: 'Exam Forms', link: '/category/exam-form', taxonomy: 'category', parent: 0 },
+  { id: 112, name: 'Loksewa', slug: 'loksewa', count: 3, description: 'Loksewa Notices', link: '/category/loksewa', taxonomy: 'category', parent: 0 },
+  { id: 128, name: 'Vacancy', slug: 'vacancy', count: 8, description: 'Job Vacancies', link: '/category/vacancy', taxonomy: 'category', parent: 0 },
+  { id: 161, name: 'Bachelor 2nd Year', slug: 'bachelor-2nd-year', count: 5, description: 'Bachelor Second Year', link: '/category/bachelor-2nd-year', taxonomy: 'category', parent: 0 },
+  { id: 150, name: 'Bachelor First Year', slug: 'bachelor-first-year-exam-routine', count: 7, description: 'Bachelor First Year', link: '/category/bachelor-first-year-exam-routine', taxonomy: 'category', parent: 0 },
+  { id: 76, name: 'Finance', slug: 'finance', count: 8, description: 'Finance & Banking', link: '/category/finance', taxonomy: 'category', parent: 0 },
+  { id: 91, name: 'Share Market', slug: 'share-market', count: 4, description: 'Share Market & NEPSE', link: '/category/share-market', taxonomy: 'category', parent: 0 },
+  { id: 133, name: 'Nepali Rappers', slug: 'rappers', count: 4, description: 'Nepali Rappers & Hip Hop', link: '/category/rappers', taxonomy: 'category', parent: 0 },
+  { id: 166, name: 'General Knowledge', slug: 'general-knowledge', count: 4, description: 'GK & Civil Service', link: '/category/general-knowledge', taxonomy: 'category', parent: 0 },
+  { id: 1, name: 'TopNepali', slug: 'topnepali', count: 23, description: 'Top Nepali Articles', link: '/category/topnepali', taxonomy: 'category', parent: 0 },
+];
+
 /**
- * Fetch general site information from WP REST root
+ * Fetch general site information — instant synchronous resolution
  */
-export async function getSiteInfo(): Promise<WPSiteInfo> {
-  const base = getWpBaseUrl();
-  try {
-    const { data } = await fetchWithCache<WPSiteInfo>(`${base}/wp-json/`);
-    return {
-      name: data?.name || 'Top Nepali',
-      description: data?.description || 'Covering Top Nepali News, Updates, Educational Information',
-      url: data?.url || base,
-    };
-  } catch (error) {
-    console.error('Failed to fetch WP site info:', error);
-    return {
-      name: 'Top Nepali',
-      description: 'Covering Top Nepali News, Updates, Educational Information',
-      url: base,
-    };
-  }
+export function getSiteInfo(): WPSiteInfo {
+  return {
+    name: 'Top Nepali',
+    description: 'Covering Top Nepali News, Updates, Educational Information',
+    url: 'https://topnepali.com',
+  };
 }
 
 /**
@@ -241,26 +245,31 @@ export async function getCategories(options: { perPage?: number; hideEmpty?: boo
     hide_empty: hideEmpty ? 'true' : 'false',
     orderby: 'count',
     order: 'desc',
+    _fields: 'id,count,description,link,name,slug,taxonomy,parent',
   });
 
   const url = `${base}/wp-json/wp/v2/categories?${params.toString()}`;
   try {
-    const { data } = await fetchWithCache<WPCategory[]>(url);
-    return Array.isArray(data) ? data : [];
+    const { data } = await fetchWithCache<WPCategory[]>(url, undefined, 86400);
+    return Array.isArray(data) && data.length > 0 ? data : DEFAULT_TOP_CATEGORIES;
   } catch (err) {
-    console.error('getCategories error:', err);
-    return [];
+    console.warn('getCategories falling back to static top categories:', err);
+    return DEFAULT_TOP_CATEGORIES;
   }
 }
 
 /**
- * Fetch category by slug
+ * Fetch category by slug — instant local resolution for top categories
  */
 export async function getCategoryBySlug(slug: string): Promise<WPCategory | null> {
+  const cleanSlug = slug.toLowerCase().trim();
+  const matched = DEFAULT_TOP_CATEGORIES.find((c) => c.slug === cleanSlug);
+  if (matched) return matched;
+
   const base = getWpBaseUrl();
-  const url = `${base}/wp-json/wp/v2/categories?slug=${encodeURIComponent(slug)}`;
+  const url = `${base}/wp-json/wp/v2/categories?slug=${encodeURIComponent(cleanSlug)}&_fields=id,count,description,link,name,slug,taxonomy,parent`;
   try {
-    const { data } = await fetchWithCache<WPCategory[]>(url);
+    const { data } = await fetchWithCache<WPCategory[]>(url, undefined, 86400);
     if (Array.isArray(data) && data.length > 0) {
       return data[0];
     }
