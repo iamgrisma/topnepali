@@ -10,6 +10,7 @@ interface Props {
   image?: string;
   type?: 'website' | 'article';
   canonicalUrl?: string;
+  canonical?: string;
   headHtml?: string | null;
   publishedTime?: string;
   modifiedTime?: string;
@@ -24,6 +25,7 @@ const {
   image = 'https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png',
   type = 'website',
   canonicalUrl,
+  canonical: canonicalProp,
   headHtml = null,
   publishedTime,
   modifiedTime,
@@ -34,7 +36,7 @@ const {
 
 import { SITE_URL, GTM_ID, GA_ID, ADSENSE_ID } from '../config';
 
-const canonical = canonicalUrl || new URL(Astro.url.pathname, SITE_URL).toString();
+const canonical = canonicalUrl || canonicalProp || new URL(Astro.url.pathname, SITE_URL).toString();
 const gaId = GA_ID;
 const adsenseId = ADSENSE_ID;
 const gtmId = GTM_ID;
@@ -183,26 +185,6 @@ const gtmId = GTM_ID;
         })(window,document,'script','dataLayer',gtmId);
       </script>
     )}
-
-    <!-- Structured Data (JSON-LD) -->
-    <script type="application/ld+json" set:html={JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": type === 'article' ? 'NewsArticle' : 'WebSite',
-      "name": title,
-      "headline": title,
-      "description": description,
-      "url": canonical,
-      ...(image ? { "image": [image] } : {}),
-      "publisher": {
-        "@type": "Organization",
-        "name": "Top Nepali",
-        "url": "https://topnepali.com",
-        "logo": {
-          "@type": "ImageObject",
-          "url": "https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png"
-        }
-      }
-    })} />
 
     <style is:global>
       @import "tailwindcss";

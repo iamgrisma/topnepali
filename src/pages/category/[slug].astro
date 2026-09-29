@@ -44,7 +44,8 @@ const otherCategories = DEFAULT_TOP_CATEGORIES.filter((c) => c.slug !== cleanSlu
 <BaseLayout
   title={category ? `${category.name} Archives — Top Nepali` : 'Category Not Found — Top Nepali'}
   description={category?.description || `Verified articles, news, and official updates categorized under ${category?.name || cleanSlug} on Top Nepali.`}
-  canonical={`https://topnepali.com/category/${cleanSlug}`}
+  canonicalUrl={currentPage > 1 ? `https://topnepali.com/category/${cleanSlug}?page=${currentPage}` : `https://topnepali.com/category/${cleanSlug}`}
+  robots={!category ? 'noindex, nofollow' : undefined}
 >
   <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-10">
     <!-- Breadcrumb -->

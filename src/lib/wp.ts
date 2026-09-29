@@ -493,19 +493,22 @@ export function optimizeWpHtml(rawHtml: string): string {
 
   let html = rawHtml;
 
-  // 1. Remove WordPress Gutenberg block comments
+  // 1. Rewrite any WordPress backend links (wp.topnepali.com) to the public frontend (topnepali.com)
+  html = html.replace(/https?:\/\/wp\.topnepali\.com/gi, 'https://topnepali.com');
+
+  // 2. Remove WordPress Gutenberg block comments
   html = html.replace(/<!--\s*\/?wp:[^>]*-->/gi, '');
 
-  // 2. Remove empty paragraphs and line breaks
+  // 3. Remove empty paragraphs and line breaks
   html = html.replace(/<p>\s*(?:&nbsp;|<br\s*\/?>|\s)*<\/p>/gi, '');
 
-  // 3. Strip inline style attributes that override clean typography
+  // 4. Strip inline style attributes that override clean typography
   html = html.replace(/\s*style="([^"]*)"/gi, (match, styleContent) => {
     const hasAlign = styleContent.match(/text-align:\s*[^;]+/i);
     return hasAlign ? ` style="${hasAlign[0]}"` : '';
   });
 
-  // 4. Optimize <img> tags: ensure loading="lazy" and decoding="async"
+  // 5. Optimize <img> tags: ensure loading="lazy" and decoding="async"
   html = html.replace(/<img\b([^>]*?)>/gi, (match, attrs) => {
     let newAttrs = attrs;
     if (!/loading\s*=/i.test(newAttrs)) {
@@ -517,12 +520,18 @@ export function optimizeWpHtml(rawHtml: string): string {
     return `<img${newAttrs}>`;
   });
 
-  // 5. Wrap <table> tags in responsive container
+  // 6. Wrap <table> tags in responsive container
   html = html.replace(/<table\b([\s\S]*?)<\/table>/gi, (match) => {
     return `<div class="overflow-x-auto my-6 rounded-lg border border-slate-200 shadow-2xs">${match}</div>`;
   });
 
-  // 6. Clean up duplicate line breaks
+  // 7. Make <iframe> embeds responsive (YouTube, Vimeo, etc.)
+  html = html.replace(/<iframe\b([\s\S]*?)<\/iframe>/gi, (match) => {
+    if (match.includes('aspect-video')) return match;
+    return `<div class="aspect-video w-full my-6 rounded-lg overflow-hidden border border-slate-200 shadow-2xs">${match}</div>`;
+  });
+
+  // 8. Clean up duplicate line breaks
   html = html.replace(/(<br\s*\/?>){3,}/gi, '<br><br>');
 
   return html.trim();
@@ -574,3 +583,53 @@ export function resolveRankMathVariables(
   return resolved;
 }
 
+/**
+ * Fetch all posts and pages for sitemap generation (paginates until all items are loaded)
+ */
+export async function getAllPostsForSitemap(): Promise<Array<{ slug: string; lastmod: string }>> {
+  const base = getWpBaseUrl();
+  const allItems: Array<{ slug: string; lastmod: string }> = [];
+  let page = 1;
+  const perPage = 100;
+  const maxPages = 20; // safety ceiling (up to 2,000 posts)
+
+  while (page <= maxPages) {
+    const url = `${base}/wp-json/wp/v2/posts?page=${page}&per_page=${perPage}&status=publish&_fields=slug,date,date_gmt,modified,modified_gmt`;
+    try {
+      const { data, headers } = await fetchWithCache<any[]>(url, undefined, 43200);
+      if (!Array.isArray(data) || data.length === 0) break;
+
+      for (const p of data) {
+        if (p.slug) {
+          const mod = (p.modified_gmt || p.modified || p.date_gmt || p.date || new Date().toISOString()).split('T')[0];
+          allItems.push({ slug: p.slug, lastmod: mod });
+        }
+      }
+
+      const totalPages = parseInt(headers.get('x-wp-totalpages') || '1', 10);
+      if (page >= totalPages) break;
+      page++;
+    } catch (err) {
+      console.warn(`getAllPostsForSitemap page ${page} notice:`, err);
+      break;
+    }
+  }
+
+  // Also fetch published pages (About, Contact, Privacy, etc.)
+  try {
+    const pagesUrl = `${base}/wp-json/wp/v2/pages?per_page=50&status=publish&_fields=slug,date,date_gmt,modified,modified_gmt`;
+    const { data } = await fetchWithCache<any[]>(pagesUrl, undefined, 43200);
+    if (Array.isArray(data)) {
+      for (const pg of data) {
+        if (pg.slug && !allItems.some((i) => i.slug === pg.slug)) {
+          const mod = (pg.modified_gmt || pg.modified || pg.date_gmt || pg.date || new Date().toISOString()).split('T')[0];
+          allItems.push({ slug: pg.slug, lastmod: mod });
+        }
+      }
+    }
+  } catch (pageErr) {
+    console.warn('getAllPostsForSitemap pages fetch notice:', pageErr);
+  }
+
+  return allItems;
+}

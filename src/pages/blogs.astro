@@ -26,7 +26,7 @@ const streamPosts = isFirstPage ? posts.slice(1) : posts;
 <BaseLayout
   title={isFirstPage ? `Blogs & Articles — ${siteInfo.name}` : `Articles — Page ${currentPage} | ${siteInfo.name}`}
   description="Comprehensive archive of TopNepali articles, educational routines, career vacancies, civic affairs, and national guides."
-  canonical="https://topnepali.com/blogs"
+  canonicalUrl={currentPage > 1 ? `https://topnepali.com/blogs?page=${currentPage}` : 'https://topnepali.com/blogs'}
 >
   <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-10">
     

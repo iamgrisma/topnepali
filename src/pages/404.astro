@@ -6,7 +6,11 @@ import Sidebar from '../components/Sidebar.astro';
 Astro.response.status = 404;
 ---
 
-<BaseLayout title="404 — Page Not Found | Top Nepali" description="The page you were looking for could not be found.">
+<BaseLayout
+  title="404 — Page Not Found | Top Nepali"
+  description="The page you were looking for could not be found."
+  robots="noindex, nofollow"
+>
   <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-8">
     <!-- Breadcrumb -->
     <nav class="flex items-center gap-2 text-xs text-slate-500 mb-6" aria-label="Breadcrumb">

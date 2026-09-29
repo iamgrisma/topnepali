@@ -26,6 +26,8 @@ const { data: posts, total, totalPages } = postsResult;
 <BaseLayout
   title={query ? `Search: "${query}" — Top Nepali` : 'Search Articles — Top Nepali'}
   description={`Search results for ${query} on Top Nepali digital archive.`}
+  canonicalUrl="https://topnepali.com/search"
+  robots="noindex, follow"
 >
   <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-8">
     <!-- Breadcrumb -->

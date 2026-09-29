@@ -88,17 +88,25 @@ const description = resolvedSeoDesc || fallbackExcerpt;
 
 // 3. Featured Image / OG Image
 const featuredImg = item ? getPostFeaturedImage(item) : null;
-const ogImage = item?.seo?.og_image || featuredImg?.url || 'https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png';
+const rawOgImage = item?.seo?.og_image || featuredImg?.url || 'https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png';
+const ogImage = rawOgImage.replace(/https?:\/\/wp\.topnepali\.com/gi, 'https://topnepali.com');
 
-// 4. Canonical URL: Prefer Rank Math canonical URL, fallback to site canonical
-const canonicalUrl = item?.seo?.canonical_url || (item ? `https://topnepali.com/${cleanSlug}` : undefined);
+// 4. Canonical URL: Prefer Rank Math canonical URL (rewritten to frontend domain), fallback to site canonical
+const rawCanonical = item?.seo?.canonical_url;
+const canonicalUrl = rawCanonical
+  ? rawCanonical.replace(/https?:\/\/wp\.topnepali\.com/gi, 'https://topnepali.com')
+  : (item ? `https://topnepali.com/${cleanSlug}` : undefined);
 
 // 5. Reading Time, Dates, Robots & Head
 const readingTime = item ? estimateReadingTime(item.content?.rendered || '') : '';
 const publishedTime = post?.date;
 const modifiedTime = post?.modified;
 const robots = typeof item?.seo?.robots === 'string' ? item.seo.robots : null;
-const headHtml = item?.head || null;
+
+// Sanitize Rank Math's rendered head HTML to rewrite backend wp.topnepali.com references to production topnepali.com
+const headHtml = item?.head
+  ? item.head.replace(/https?:\/\/wp\.topnepali\.com/gi, 'https://topnepali.com')
+  : null;
 
 // Fetch related posts and recent posts in parallel (eliminates sequential API waterfall)
 const [relResult, recentPosts] = await Promise.all([

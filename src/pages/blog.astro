@@ -1,6 +1,4 @@
 ---
-// blog.astro — In-memory alias for /blogs (zero HTTP redirect hops)
-import BlogsPage from './blogs.astro';
+// blog.astro — Permanent 301 redirect to canonical /blogs archive
+return Astro.redirect('/blogs', 301);
 ---
-
-<BlogsPage />

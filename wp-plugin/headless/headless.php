@@ -2,8 +2,8 @@
 /**
  * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
- * Description: High-performance Headless WordPress engine for Astro & Cloudflare Edge. Provides automatic on-demand cache revalidation, preview rewrites, Rank Math head bridge, and REST API edge caching.
- * Version: 1.3.1
+ * Description: Enterprise Headless WordPress engine for Astro SSR & Cloudflare Edge. Provides automatic granular cache invalidation, admin bar purge controls, native WordPress core zip updates, Rank Math SEO bridge, and subdomain protection.
+ * Version: 1.4.0
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -16,35 +16,67 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.3.1';
+    const VERSION = '1.4.0';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
     const OPTION_SECRET = 'topnepali_headless_secret';
     const OPTION_REWRITE_LINKS = 'topnepali_headless_rewrite_links';
+    const OPTION_AUTO_UPDATE = 'topnepali_headless_auto_update';
 
     private $cached_frontend_url = null;
     private $cached_secret = null;
 
     public function __construct() {
-        // Lifecycle action hooks
+        // Content Lifecycle Hooks: Granular automatic cache purging
         add_action('save_post', array($this, 'on_save_post'), 10, 3);
         add_action('wp_trash_post', array($this, 'on_trash_post'));
         add_action('untrash_post', array($this, 'on_trash_post'));
 
-        // Admin-only hooks (zero overhead on public / REST API visits)
+        // Taxonomy Lifecycle Hooks: Purge category & tag archives when modified
+        add_action('create_category', array($this, 'on_taxonomy_change'));
+        add_action('edited_category', array($this, 'on_taxonomy_change'));
+        add_action('delete_category', array($this, 'on_taxonomy_change'));
+        add_action('create_post_tag', array($this, 'on_taxonomy_change'));
+        add_action('edited_post_tag', array($this, 'on_taxonomy_change'));
+        add_action('delete_post_tag', array($this, 'on_taxonomy_change'));
+
+        // Navigation Menu & Site Branding updates
+        add_action('wp_update_nav_menu', array($this, 'on_menu_change'));
+        add_action('update_option_blogname', array($this, 'on_site_info_change'));
+        add_action('update_option_blogdescription', array($this, 'on_site_info_change'));
+
+        // Admin & Dashboard controls
         if (is_admin()) {
             add_action('admin_menu', array($this, 'register_admin_menu'));
             add_action('admin_init', array($this, 'register_settings'));
+            add_action('admin_init', array($this, 'handle_admin_cache_actions'));
 
-            // Native WordPress Core Plugin Update Hooks
+            // Native WordPress Core Plugin Update Pipeline
             add_filter('pre_set_site_transient_update_plugins', array($this, 'check_for_update'));
             add_filter('plugins_api', array($this, 'plugin_popup_info'), 20, 3);
+            add_filter('auto_update_plugin', array($this, 'filter_auto_update_plugin'), 10, 2);
         }
 
-        // Preview & View link rewrites
+        // Admin Bar Quick Purge Buttons
+        add_action('admin_bar_menu', array($this, 'register_admin_bar_menu'), 99);
+        add_action('admin_init', array($this, 'handle_admin_bar_purge'));
+
+        // Preview & Permalink rewrites
         add_filter('post_link', array($this, 'filter_permalink'), 10, 2);
         add_filter('page_link', array($this, 'filter_permalink'), 10, 2);
         add_filter('preview_post_link', array($this, 'filter_preview_link'), 10, 2);
+
+        // Subdomain & Backend Security Protection:
+        // - Prevent duplicate content cannibalization by 301-redirecting public visits to frontend
+        // - Shield wp.topnepali.com from indexing via X-Robots-Tag
+        // - Block ?author=N user scanning
+        add_action('template_redirect', array($this, 'handle_frontend_redirect'), 1);
+        add_action('send_headers', array($this, 'send_backend_security_headers'));
+
+        // Rank Math URL Sanitizers (guarantee canonical & OG tags point strictly to production frontend)
+        add_filter('rank_math/frontend/canonical', array($this, 'filter_rank_math_url'));
+        add_filter('rank_math/opengraph/url', array($this, 'filter_rank_math_url'));
+        add_filter('rank_math/json_ld', array($this, 'filter_rank_math_json_ld'), 99, 1);
 
         // REST API enhancements & Edge Caching
         add_action('rest_api_init', array($this, 'configure_rest_api'));
@@ -69,8 +101,9 @@ class TopNepali_Headless_Plugin {
         $route = $request->get_route();
         // Target posts, pages, categories, tags, and media queries
         if (preg_match('#^/wp/v2/(posts|pages|categories|tags|media)#', $route)) {
-            $response->header('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400');
-            $response->header('Cloudflare-CDN-Cache-Control', 'max-age=86400, stale-while-revalidate=86400');
+            // Edge cache at 1 hour with stale-while-revalidate so updates reflect promptly
+            $response->header('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
+            $response->header('Cloudflare-CDN-Cache-Control', 'max-age=3600, stale-while-revalidate=86400');
             $response->header('X-Headless-Edge-Cache', 'ENABLED');
         }
 
@@ -148,6 +181,11 @@ class TopNepali_Headless_Plugin {
             'data_format' => 'body',
         ));
 
+        // Purge LiteSpeed Cache if plugin is active on WP
+        if (defined('LSCWP_V')) {
+            do_action('litespeed_purge_all');
+        }
+
         // Proactively warm the target URLs from WordPress in the background
         $warm_urls = array('/');
         if ($slug) {
@@ -195,10 +233,8 @@ class TopNepali_Headless_Plugin {
         return $dispatched;
     }
 
-
-
     /**
-     * Hook: On Post / Page Save & Publish
+     * Hook: On Post / Page Save & Publish (Granular Purging)
      */
     public function on_save_post($post_id, $post, $update) {
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
@@ -212,11 +248,17 @@ class TopNepali_Headless_Plugin {
 
         $extra_urls = array();
         if ($post->post_type === 'post') {
-            // Category archives
+            // Category archives (including parent categories)
             $categories = get_the_category($post_id);
             if (!empty($categories) && !is_wp_error($categories)) {
                 foreach ($categories as $cat) {
                     $extra_urls[] = '/category/' . $cat->slug;
+                    if ($cat->parent) {
+                        $parent = get_category($cat->parent);
+                        if ($parent && !is_wp_error($parent)) {
+                            $extra_urls[] = '/category/' . $parent->slug;
+                        }
+                    }
                 }
             }
             // Tag archives
@@ -228,7 +270,7 @@ class TopNepali_Headless_Plugin {
             }
         }
 
-        $this->dispatch_revalidation($post->post_name, $post->post_type, $update ? 'update' : 'publish', $extra_urls);
+        $this->dispatch_revalidation($post->post_name, $post->post_type, $update ? 'update' : 'publish', array_unique($extra_urls));
     }
 
     /**
@@ -256,7 +298,32 @@ class TopNepali_Headless_Plugin {
             }
         }
 
-        $this->dispatch_revalidation($post->post_name, $post->post_type, 'delete', $extra_urls);
+        $this->dispatch_revalidation($post->post_name, $post->post_type, 'delete', array_unique($extra_urls));
+    }
+
+    /**
+     * Hook: On Taxonomy (Category/Tag) Create, Edit, or Delete
+     */
+    public function on_taxonomy_change($term_id) {
+        $term = get_term($term_id);
+        if (!$term || is_wp_error($term)) return;
+
+        $path = ($term->taxonomy === 'category') ? '/category/' . $term->slug : '/tag/' . $term->slug;
+        $this->dispatch_revalidation(null, 'taxonomy', 'update', array($path, '/blogs', '/sitemap.xml'));
+    }
+
+    /**
+     * Hook: On Navigation Menu Change
+     */
+    public function on_menu_change($menu_id) {
+        $this->dispatch_revalidation(null, 'menu', 'update', array('/', '/blogs', '/rss.xml'));
+    }
+
+    /**
+     * Hook: On Site Info / Branding Change
+     */
+    public function on_site_info_change() {
+        $this->dispatch_revalidation(null, 'site_info', 'update', array('/', '/blogs', '/rss.xml', '/sitemap.xml'));
     }
 
     /**
@@ -344,10 +411,13 @@ class TopNepali_Headless_Plugin {
         $post_id = is_array($post_arr) ? ($post_arr['id'] ?? 0) : $post_arr;
         if (!$post_id) return null;
 
+        $frontend_url = $this->get_frontend_url();
+
         // Check persistent post meta cache first (instant microsecond lookup)
         $cached_head = get_post_meta($post_id, '_headless_rm_head', true);
         if (!empty($cached_head)) {
-            return $cached_head;
+            // Safety sanitization: guarantee production frontend domain
+            return str_replace(array('https://wp.topnepali.com', 'http://wp.topnepali.com'), $frontend_url, $cached_head);
         }
 
         if (!class_exists('\RankMath\Paper\Paper')) {
@@ -374,6 +444,16 @@ class TopNepali_Headless_Plugin {
 
         $clean_head = !empty($head) ? trim($head) : null;
         if ($clean_head) {
+            // Rewrite all backend URL occurrences to the configured frontend domain
+            $wp_site_url = site_url();
+            $wp_home_url = home_url();
+            $search_urls = array_unique(array_filter(array(
+                $wp_site_url,
+                $wp_home_url,
+                'https://wp.topnepali.com',
+                'http://wp.topnepali.com',
+            )));
+            $clean_head = str_replace($search_urls, $frontend_url, $clean_head);
             update_post_meta($post_id, '_headless_rm_head', $clean_head);
         }
 
@@ -455,18 +535,22 @@ class TopNepali_Headless_Plugin {
         if (!$post_id) return null;
 
         $target_post = get_post($post_id);
+        $frontend_url = $this->get_frontend_url();
 
         $raw_title     = get_post_meta($post_id, 'rank_math_title', true);
         $raw_desc      = get_post_meta($post_id, 'rank_math_description', true);
+        $raw_canonical = get_post_meta($post_id, 'rank_math_canonical_url', true);
         $raw_og_title  = get_post_meta($post_id, 'rank_math_facebook_title', true);
         $raw_og_desc   = get_post_meta($post_id, 'rank_math_facebook_description', true);
         $raw_tw_title  = get_post_meta($post_id, 'rank_math_twitter_title', true);
         $raw_tw_desc   = get_post_meta($post_id, 'rank_math_twitter_description', true);
 
+        $canonical = $raw_canonical ? str_replace(array('https://wp.topnepali.com', 'http://wp.topnepali.com'), $frontend_url, $raw_canonical) : null;
+
         return array(
             'title'          => $this->resolve_seo_template_vars($raw_title, $target_post) ?: ($target_post ? $target_post->post_title : null),
             'description'    => $this->resolve_seo_template_vars($raw_desc, $target_post) ?: null,
-            'canonical_url'  => get_post_meta($post_id, 'rank_math_canonical_url', true) ?: null,
+            'canonical_url'  => $canonical,
             'focus_keyword'  => get_post_meta($post_id, 'rank_math_focus_keyword', true) ?: null,
             'robots'         => get_post_meta($post_id, 'rank_math_robots', true) ?: null,
             'og_title'       => $this->resolve_seo_template_vars($raw_og_title, $target_post) ?: null,
@@ -507,6 +591,64 @@ class TopNepali_Headless_Plugin {
     }
 
     /**
+     * Redirect public frontend visitors from wp.topnepali.com to production topnepali.com
+     * Preserves WordPress Admin, REST API, Cron, and preview functions.
+     */
+    public function handle_frontend_redirect() {
+        if (is_admin()) return;
+        if (defined('REST_REQUEST') && REST_REQUEST) return;
+        if (defined('DOING_CRON') && DOING_CRON) return;
+        if (is_preview()) return;
+        if (isset($_GET['preview']) && $_GET['preview'] === 'true') return;
+
+        // Block author enumeration via ?author=1
+        if (isset($_GET['author'])) {
+            wp_die('Author enumeration is disabled on Headless backend.', 'Forbidden', array('response' => 403));
+        }
+
+        $frontend_url = $this->get_frontend_url();
+        $req_uri = $_SERVER['REQUEST_URI'] ?? '/';
+
+        // 301 Permanent redirect to canonical frontend
+        wp_redirect(rtrim($frontend_url, '/') . $req_uri, 301);
+        exit;
+    }
+
+    /**
+     * Send noindex, nofollow and security headers on WordPress backend responses
+     */
+    public function send_backend_security_headers() {
+        if (!headers_sent()) {
+            header('X-Robots-Tag: noindex, nofollow', true);
+            header('X-Content-Type-Options: nosniff', true);
+        }
+    }
+
+    /**
+     * Filter Rank Math canonical and OG URLs to production frontend
+     */
+    public function filter_rank_math_url($url) {
+        if (empty($url)) return $url;
+        $frontend_url = $this->get_frontend_url();
+        return str_replace(array('https://wp.topnepali.com', 'http://wp.topnepali.com'), $frontend_url, $url);
+    }
+
+    /**
+     * Filter Rank Math JSON-LD structured data to ensure production URLs
+     */
+    public function filter_rank_math_json_ld($data) {
+        if (empty($data)) return $data;
+        $frontend_url = $this->get_frontend_url();
+        $json = wp_json_encode($data);
+        if ($json) {
+            $json = str_replace(array('https://wp.topnepali.com', 'http://wp.topnepali.com'), $frontend_url, $json);
+            $decoded = json_decode($json, true);
+            if (is_array($decoded)) return $decoded;
+        }
+        return $data;
+    }
+
+    /**
      * Settings Page Registration
      */
     public function register_admin_menu() {
@@ -535,6 +677,163 @@ class TopNepali_Headless_Plugin {
             'sanitize_callback' => 'sanitize_text_field',
             'default'           => '1',
         ));
+        register_setting('topnepali_headless_group', self::OPTION_AUTO_UPDATE, array(
+            'type'              => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => '1',
+        ));
+    }
+
+    /**
+     * Register Admin Bar Quick Actions for Instant Cache Purging
+     */
+    public function register_admin_bar_menu($admin_bar) {
+        if (!current_user_can('edit_posts')) return;
+
+        $title = '<span class="ab-icon dashicons dashicons-rest-api"></span><span class="ab-label">TopNepali Cache</span>';
+
+        $admin_bar->add_node(array(
+            'id'    => 'topnepali-cache',
+            'title' => $title,
+            'href'  => admin_url('options-general.php?page=topnepali-headless'),
+            'meta'  => array('title' => 'TopNepali Headless Cache Tools'),
+        ));
+
+        // Purge current post if editing or viewing
+        $current_post_id = 0;
+        if (is_admin()) {
+            global $post;
+            if ($post && !empty($post->ID)) {
+                $current_post_id = $post->ID;
+            }
+        }
+
+        if ($current_post_id) {
+            $nonce_url = wp_nonce_url(
+                admin_url('admin-post.php?action=topnepali_purge_single&post_id=' . $current_post_id),
+                'topnepali_purge_single_nonce'
+            );
+            $admin_bar->add_node(array(
+                'id'     => 'topnepali-purge-current',
+                'parent' => 'topnepali-cache',
+                'title'  => '⚡ Purge Current Post Cache',
+                'href'   => $nonce_url,
+            ));
+        }
+
+        // Purge entire site
+        $nonce_all_url = wp_nonce_url(
+            admin_url('admin-post.php?action=topnepali_purge_all'),
+            'topnepali_purge_all_nonce'
+        );
+        $admin_bar->add_node(array(
+            'id'     => 'topnepali-purge-all',
+            'parent' => 'topnepali-cache',
+            'title'  => '🔄 Purge Entire Frontend Cache',
+            'href'   => $nonce_all_url,
+        ));
+
+        // Pre-warm cache
+        $nonce_warm_url = wp_nonce_url(
+            admin_url('admin-post.php?action=topnepali_warm_all'),
+            'topnepali_warm_all_nonce'
+        );
+        $admin_bar->add_node(array(
+            'id'     => 'topnepali-warm-all',
+            'parent' => 'topnepali-cache',
+            'title'  => '🔥 Pre-Warm Edge CDN',
+            'href'   => $nonce_warm_url,
+        ));
+    }
+
+    /**
+     * Handle Admin Bar Action Handlers
+     */
+    public function handle_admin_bar_purge() {
+        if (!current_user_can('edit_posts')) return;
+
+        // Handle single post purge
+        if (isset($_GET['action']) && $_GET['action'] === 'topnepali_purge_single' && isset($_GET['post_id'])) {
+            check_admin_referer('topnepali_purge_single_nonce');
+            $post_id = intval($_GET['post_id']);
+            $post = get_post($post_id);
+            if ($post) {
+                delete_post_meta($post_id, '_headless_rm_head');
+                $this->dispatch_revalidation($post->post_name, $post->post_type, 'update');
+            }
+            wp_safe_redirect(add_query_arg('topnepali_msg', 'purged_single', wp_get_referer() ?: admin_url()));
+            exit;
+        }
+
+        // Handle entire cache purge
+        if (isset($_GET['action']) && $_GET['action'] === 'topnepali_purge_all') {
+            check_admin_referer('topnepali_purge_all_nonce');
+            $this->dispatch_revalidation(null, 'all', 'purge', array('/', '/blogs', '/rss.xml', '/sitemap.xml', '/tools'));
+            wp_safe_redirect(add_query_arg('topnepali_msg', 'purged_all', wp_get_referer() ?: admin_url()));
+            exit;
+        }
+
+        // Handle pre-warm
+        if (isset($_GET['action']) && $_GET['action'] === 'topnepali_warm_all') {
+            check_admin_referer('topnepali_warm_all_nonce');
+            $this->warm_recent_content();
+            wp_safe_redirect(add_query_arg('topnepali_msg', 'warmed_all', wp_get_referer() ?: admin_url()));
+            exit;
+        }
+    }
+
+    /**
+     * Helper to warm recent content
+     */
+    public function warm_recent_content() {
+        $recent_posts = get_posts(array(
+            'numberposts' => 20,
+            'post_status' => 'publish',
+            'post_type'   => 'post',
+        ));
+        $urls = array('/', '/blogs', '/rss.xml', '/sitemap.xml');
+        foreach ($recent_posts as $p) {
+            $urls[] = '/' . $p->post_name;
+        }
+        $cats = get_categories(array('number' => 12, 'hide_empty' => true));
+        foreach ($cats as $c) {
+            $urls[] = '/category/' . $c->slug;
+        }
+        return $this->warm_cache($urls);
+    }
+
+    /**
+     * Handle Admin Settings Page Forms (Specific URL purge, Full purge, Warm, Test)
+     */
+    public function handle_admin_cache_actions() {
+        if (!current_user_can('manage_options')) return;
+
+        // Purge specific custom path or URL
+        if (isset($_POST['topnepali_purge_custom_url']) && check_admin_referer('topnepali_purge_custom_action', 'topnepali_purge_custom_nonce')) {
+            $raw_url = trim($_POST['topnepali_custom_url'] ?? '');
+            if (!empty($raw_url)) {
+                $path = parse_url($raw_url, PHP_URL_PATH) ?: $raw_url;
+                $clean_path = '/' . ltrim($path, '/');
+                $this->dispatch_revalidation(null, 'custom', 'purge', array($clean_path));
+                set_transient('topnepali_admin_notice', array(
+                    'type'    => 'success',
+                    'message' => 'Successfully purged specific URL from Cloudflare Edge & Astro SSR: ' . esc_html($clean_path),
+                ), 30);
+            }
+            wp_safe_redirect(admin_url('options-general.php?page=topnepali-headless'));
+            exit;
+        }
+
+        // Purge entire site cache
+        if (isset($_POST['topnepali_purge_entire_cache']) && check_admin_referer('topnepali_purge_entire_action', 'topnepali_purge_entire_nonce')) {
+            $this->dispatch_revalidation(null, 'all', 'purge', array('/', '/blogs', '/rss.xml', '/sitemap.xml', '/tools'));
+            set_transient('topnepali_admin_notice', array(
+                'type'    => 'success',
+                'message' => 'Successfully purged entire frontend edge cache (Homepage, Blogs, RSS, Sitemap, and all dynamic pages).',
+            ), 30);
+            wp_safe_redirect(admin_url('options-general.php?page=topnepali-headless'));
+            exit;
+        }
     }
 
     /**
@@ -546,6 +845,12 @@ class TopNepali_Headless_Plugin {
         $frontend_url = $this->get_frontend_url();
         $secret = $this->get_secret();
         $rewrite_links = get_option(self::OPTION_REWRITE_LINKS, '1');
+        $auto_update = get_option(self::OPTION_AUTO_UPDATE, '1');
+
+        $flash_notice = get_transient('topnepali_admin_notice');
+        if ($flash_notice) {
+            delete_transient('topnepali_admin_notice');
+        }
 
         $test_result = null;
         if (isset($_POST['topnepali_test_revalidate']) && check_admin_referer('topnepali_test_action', 'topnepali_test_nonce')) {
@@ -578,64 +883,42 @@ class TopNepali_Headless_Plugin {
 
         $warm_result = null;
         if (isset($_POST['topnepali_warm_recent']) && check_admin_referer('topnepali_warm_action', 'topnepali_warm_nonce')) {
-            $recent_posts = get_posts(array(
-                'numberposts' => 20,
-                'post_status' => 'publish',
-                'post_type'   => 'post',
-            ));
-            $urls = array('/');
-            foreach ($recent_posts as $p) {
-                $urls[] = '/' . $p->post_name;
-            }
-            $cats = get_categories(array('number' => 12, 'hide_empty' => true));
-            foreach ($cats as $c) {
-                $urls[] = '/category/' . $c->slug;
-            }
-            $urls[] = '/rss.xml';
-            $urls[] = '/sitemap.xml';
-
-            $count = $this->warm_cache($urls);
+            $count = $this->warm_recent_content();
             $warm_result = array(
                 'success' => true,
                 'count'   => $count,
-                'message' => "Successfully triggered background cache warming for {$count} URLs (Homepage, 20 Posts, 12 Categories, RSS, Sitemap) directly on Cloudflare Edge CDN."
+                'message' => "Successfully triggered background cache warming for {$count} URLs directly on Cloudflare Edge CDN."
             );
         }
 
-        $update_check_result = null;
+        // Check for updates form trigger
+        $update_check_msg = null;
         if (isset($_POST['topnepali_check_updates']) && check_admin_referer('topnepali_update_action', 'topnepali_update_nonce')) {
-            delete_transient('topnepali_headless_update_info');
-            delete_site_transient('update_plugins');
-            $remote = $this->get_remote_info(true);
-            if ($remote && !empty($remote['version'])) {
-                $has_update = version_compare(self::VERSION, $remote['version'], '<');
-                $update_check_result = array(
-                    'success'    => true,
-                    'has_update' => $has_update,
-                    'version'    => $remote['version'],
-                    'message'    => $has_update
-                        ? "New update available: v{$remote['version']} (Current: v" . self::VERSION . "). You can update now from the WordPress Updates screen or Plugins page."
-                        : "Plugin is up to date (v" . self::VERSION . ").",
-                );
+            $remote_info = $this->get_remote_info(true);
+            if (!empty($remote_info['version'])) {
+                if (version_compare(self::VERSION, $remote_info['version'], '<')) {
+                    $update_check_msg = 'A newer version (v' . esc_html($remote_info['version']) . ') is available! Please update via the WordPress Plugins screen.';
+                } else {
+                    $update_check_msg = 'Your TopNepali Headless plugin is up to date (v' . esc_html(self::VERSION) . ').';
+                }
             } else {
-                $update_check_result = array(
-                    'success' => false,
-                    'message' => 'Failed to reach Astro update server. Please verify your Frontend URL and Secret Token.',
-                );
+                $update_check_msg = 'Could not contact Astro Cloudflare update endpoint. Please check your Frontend URL and Secret Token.';
             }
         }
-
         ?>
         <div class="wrap">
-            <h1>TopNepali Headless Configuration</h1>
-            <p>Connects your WordPress backend with your Astro SSR / Cloudflare Edge frontend for instant cache revalidation and pre-warming.</p>
+            <h1>TopNepali Headless Configuration & Cache Manager</h1>
+            <p>Connects your WordPress backend with your Astro SSR / Cloudflare Edge frontend for instant cache revalidation, granular purging, and pre-warming.</p>
 
-            <?php if ($update_check_result): ?>
-                <div class="notice notice-<?php echo $update_check_result['success'] ? ($update_check_result['has_update'] ? 'warning' : 'success') : 'error'; ?> is-dismissible">
-                    <p><strong>Plugin Update Status:</strong> <?php echo esc_html($update_check_result['message']); ?></p>
-                    <?php if (!empty($update_check_result['has_update'])): ?>
-                        <p><a href="<?php echo esc_url(admin_url('update-core.php')); ?>" class="button button-primary">Go to WordPress Updates</a></p>
-                    <?php endif; ?>
+            <?php if ($flash_notice): ?>
+                <div class="notice notice-<?php echo esc_attr($flash_notice['type']); ?> is-dismissible">
+                    <p><strong>Cache Manager:</strong> <?php echo esc_html($flash_notice['message']); ?></p>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($update_check_msg): ?>
+                <div class="notice notice-info is-dismissible">
+                    <p><strong>Plugin Updates:</strong> <?php echo esc_html($update_check_msg); ?></p>
                 </div>
             <?php endif; ?>
 
@@ -670,7 +953,7 @@ class TopNepali_Headless_Plugin {
                                 placeholder="https://topnepali.com"
                                 required
                             />
-                            <p class="description">The public URL of your Astro / Cloudflare Pages site.</p>
+                            <p class="description">The public production URL of your Astro / Cloudflare Pages site.</p>
                         </td>
                     </tr>
                     <tr>
@@ -678,13 +961,13 @@ class TopNepali_Headless_Plugin {
                         <td>
                             <input
                                 name="<?php echo esc_attr(self::OPTION_SECRET); ?>"
-                                type="text"
+                                type="password"
                                 id="<?php echo esc_attr(self::OPTION_SECRET); ?>"
                                 value="<?php echo esc_attr($secret); ?>"
                                 class="regular-text"
                                 required
                             />
-                            <p class="description">Must match <code>REVALIDATE_SECRET</code> in your Astro <code>.env</code>.</p>
+                            <p class="description">Must match <code>REVALIDATE_SECRET</code> in your Astro Cloudflare environment variables.</p>
                         </td>
                     </tr>
                     <tr>
@@ -698,7 +981,22 @@ class TopNepali_Headless_Plugin {
                                     value="1"
                                     <?php checked('1', $rewrite_links); ?>
                                 />
-                                Rewrite "View Post" and preview buttons in WP Admin to point to the Headless frontend.
+                                Rewrite "View Post" and preview buttons in WP Admin to point directly to the Headless frontend.
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Automatic Background Updates</th>
+                        <td>
+                            <label for="<?php echo esc_attr(self::OPTION_AUTO_UPDATE); ?>">
+                                <input
+                                    name="<?php echo esc_attr(self::OPTION_AUTO_UPDATE); ?>"
+                                    type="checkbox"
+                                    id="<?php echo esc_attr(self::OPTION_AUTO_UPDATE); ?>"
+                                    value="1"
+                                    <?php checked('1', $auto_update); ?>
+                                />
+                                Enable native WordPress automatic background updates for TopNepali Headless.
                             </label>
                         </td>
                     </tr>
@@ -709,10 +1007,56 @@ class TopNepali_Headless_Plugin {
 
             <hr style="margin: 30px 0;" />
 
-            <h2>Plugin Updates (Native WordPress Upgrader)</h2>
+            <h2>Granular Cache Management (Cloudflare Edge & Astro SSR)</h2>
+            <p>Purge specific URLs or the entire website cache on demand across Cloudflare Global Edge CDN.</p>
+            
+            <div style="background:#fff;border:1px solid #ccd0d4;padding:15px;border-radius:6px;max-width:800px;margin-bottom:20px;">
+                <h3 style="margin-top:0;">Purge Specific URL / Path</h3>
+                <form method="post" action="">
+                    <?php wp_nonce_field('topnepali_purge_custom_action', 'topnepali_purge_custom_nonce'); ?>
+                    <p>Enter any specific path to purge instantly (e.g., <code>/exam-routines</code> or <code>/category/education</code>):</p>
+                    <input
+                        type="text"
+                        name="topnepali_custom_url"
+                        class="regular-text"
+                        placeholder="/exam-routines"
+                        required
+                    />
+                    <button type="submit" class="button button-secondary" name="topnepali_purge_custom_url">
+                        ⚡ Purge Specific URL Cache
+                    </button>
+                </form>
+            </div>
+
+            <div style="background:#fff;border:1px solid #ccd0d4;padding:15px;border-radius:6px;max-width:800px;margin-bottom:20px;">
+                <h3 style="margin-top:0;">Purge Entire Website Cache</h3>
+                <p>Immediately purges the homepage, blogs, RSS feed, sitemap, and all cached dynamic pages.</p>
+                <form method="post" action="" onsubmit="return confirm('Are you sure you want to purge the entire site cache?');">
+                    <?php wp_nonce_field('topnepali_purge_entire_action', 'topnepali_purge_entire_nonce'); ?>
+                    <button type="submit" class="button button-secondary" name="topnepali_purge_entire_cache">
+                        🔄 Purge Entire Frontend Cache
+                    </button>
+                </form>
+            </div>
+
+            <div style="background:#fff;border:1px solid #ccd0d4;padding:15px;border-radius:6px;max-width:800px;margin-bottom:20px;">
+                <h3 style="margin-top:0;">Pre-Warm Edge CDN Cache</h3>
+                <p>Proactively warms Cloudflare edge caches for instant sub-50ms responses for all visitors.</p>
+                <form method="post" action="">
+                    <?php wp_nonce_field('topnepali_warm_action', 'topnepali_warm_nonce'); ?>
+                    <input type="hidden" name="topnepali_warm_recent" value="1" />
+                    <button type="submit" class="button button-primary">
+                        🔥 Pre-Warm Top 20 Posts & Archives
+                    </button>
+                </form>
+            </div>
+
+            <hr style="margin: 30px 0;" />
+
+            <h2>Plugin Updates & Connectivity</h2>
             <p>Installed Version: <strong>v<?php echo esc_html(self::VERSION); ?></strong></p>
             <p>Updates are delivered safely as standard zip archives via WordPress core's native upgrader with zero raw file write risks.</p>
-            <form method="post" action="">
+            <form method="post" action="" style="display:inline-block;margin-right:10px;">
                 <?php wp_nonce_field('topnepali_update_action', 'topnepali_update_nonce'); ?>
                 <input type="hidden" name="topnepali_check_updates" value="1" />
                 <button type="submit" class="button button-secondary">
@@ -720,27 +1064,11 @@ class TopNepali_Headless_Plugin {
                 </button>
             </form>
 
-            <hr style="margin: 30px 0;" />
-
-            <h2>Pre-Warm Edge CDN Cache</h2>
-            <p>Proactively pre-warms Cloudflare's Global Edge CDN so visitors receive instant sub-100ms responses with zero cold start delays.</p>
-            <form method="post" action="">
-                <?php wp_nonce_field('topnepali_warm_action', 'topnepali_warm_nonce'); ?>
-                <input type="hidden" name="topnepali_warm_recent" value="1" />
-                <button type="submit" class="button button-primary">
-                    Pre-Warm Frontend Cache (Home, Top 20 Posts & Categories)
-                </button>
-            </form>
-
-            <hr style="margin: 30px 0;" />
-
-            <h2>Test Revalidation Webhook</h2>
-            <p>Send a test ping to your Astro revalidation endpoint to verify network connectivity and token authentication.</p>
-            <form method="post" action="">
+            <form method="post" action="" style="display:inline-block;">
                 <?php wp_nonce_field('topnepali_test_action', 'topnepali_test_nonce'); ?>
                 <input type="hidden" name="topnepali_test_revalidate" value="1" />
                 <button type="submit" class="button button-secondary">
-                    Test Connection to <?php echo esc_html($frontend_url); ?>/api/revalidate
+                    Test Webhook Connection
                 </button>
             </form>
         </div>
@@ -825,11 +1153,27 @@ class TopNepali_Headless_Plugin {
         $res->requires_php  = !empty($remote_info['requires_php']) ? $remote_info['requires_php'] : '7.4';
         $res->last_updated  = !empty($remote_info['last_updated']) ? $remote_info['last_updated'] : '';
         $res->sections      = !empty($remote_info['sections']) ? (array) $remote_info['sections'] : array(
-            'description' => 'High-performance Headless WordPress engine for Astro & Cloudflare Edge.',
-            'changelog'   => 'Native WordPress update pipeline.',
+            'description' => 'Enterprise Headless WordPress engine for Astro & Cloudflare Edge.',
+            'changelog'   => 'Native WordPress update pipeline with automated granular cache invalidation.',
         );
 
         return $res;
+    }
+
+    /**
+     * Filter to enable native automatic background updates for this plugin
+     */
+    public function filter_auto_update_plugin($update, $item) {
+        if (!get_option(self::OPTION_AUTO_UPDATE, '1')) {
+            return $update;
+        }
+
+        $plugin_file = plugin_basename(__FILE__);
+        if (!empty($item->plugin) && ($item->plugin === $plugin_file || strpos($item->plugin, 'headless') !== false)) {
+            return true;
+        }
+
+        return $update;
     }
 
     /**
@@ -868,8 +1212,9 @@ class TopNepali_Headless_Plugin {
             'timeout'   => 10,
             'sslverify' => true,
             'headers'   => array(
-                'Accept'     => 'application/json',
-                'User-Agent' => 'TopNepali-WP-NativeUpdater/' . self::VERSION . '; ' . home_url(),
+                'Accept'              => 'application/json',
+                'x-revalidate-secret' => $secret,
+                'User-Agent'          => 'TopNepali-WP-NativeUpdater/' . self::VERSION . '; ' . home_url(),
             ),
         ));
 

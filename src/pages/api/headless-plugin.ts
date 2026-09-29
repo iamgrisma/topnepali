@@ -100,10 +100,20 @@ function createZipBuffer(entries: ZipEntry[]): Buffer {
 }
 
 export const GET: APIRoute = async ({ url, request }) => {
-  const reqSecret = url.searchParams.get('secret') || request.headers.get('x-revalidate-secret');
+  const reqSecret = request.headers.get('x-revalidate-secret') || url.searchParams.get('secret');
+
+  function timingSafeCompare(a: string, b: string): boolean {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    if (!a || !b || a.length !== b.length) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) {
+      diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+    return diff === 0;
+  }
 
   // Strictly enforce secret token authentication to protect private plugin distribution
-  if (!reqSecret || reqSecret !== REVALIDATE_SECRET) {
+  if (!reqSecret || !timingSafeCompare(reqSecret, REVALIDATE_SECRET)) {
     return new Response(JSON.stringify({ error: 'Unauthorized: Valid secret token required' }), {
       status: 401,
       headers: {

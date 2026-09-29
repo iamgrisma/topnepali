@@ -23,8 +23,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return response;
     }
 
-    // 3. Webhook endpoints (never cache)
-    if (pathname.startsWith('/api/revalidate')) {
+    // 3. Webhook & private plugin distribution endpoints (never cache)
+    if (pathname.startsWith('/api/revalidate') || pathname.startsWith('/api/headless-plugin')) {
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
       response.headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
       return response;
@@ -36,7 +36,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return response;
     }
 
-    // 5. Headless JSON APIs: short edge cache to absorb bursts
+    // 5. Public Headless JSON APIs: short edge cache to absorb bursts
     if (pathname.startsWith('/api/')) {
       response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
       response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=300, stale-while-revalidate=600');
@@ -66,10 +66,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
       response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=2592000, stale-while-revalidate=86400');
     }
 
-    // Standard security headers
+    // Standard modern security headers
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('X-Frame-Options', 'SAMEORIGIN');
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   } catch (err) {
     console.error('[middleware] cache header error:', err);
   }

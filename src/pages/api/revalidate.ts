@@ -10,7 +10,17 @@ export const POST: APIRoute = async (context) => {
     const secretFromQuery = url.searchParams.get('secret');
     const providedSecret = authHeader?.replace(/^Bearer\s+/i, '') || secretFromQuery;
 
-    if (!providedSecret || providedSecret !== REVALIDATE_SECRET) {
+    function timingSafeCompare(a: string, b: string): boolean {
+      if (typeof a !== 'string' || typeof b !== 'string') return false;
+      if (!a || !b || a.length !== b.length) return false;
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) {
+        diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+      }
+      return diff === 0;
+    }
+
+    if (!providedSecret || !timingSafeCompare(providedSecret, REVALIDATE_SECRET)) {
       return new Response(JSON.stringify({ error: 'Unauthorized: Invalid revalidate secret token' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },

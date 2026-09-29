@@ -39,7 +39,8 @@ if (tag) {
 <BaseLayout
   title={tag ? `Tag: #${tag.name} — Top Nepali` : 'Tag Not Found — Top Nepali'}
   description={tag?.description || `Articles and updates tagged under #${tag?.name || cleanSlug} on Top Nepali.`}
-  canonical={`https://topnepali.com/tag/${cleanSlug}`}
+  canonicalUrl={currentPage > 1 ? `https://topnepali.com/tag/${cleanSlug}?page=${currentPage}` : `https://topnepali.com/tag/${cleanSlug}`}
+  robots={!tag ? 'noindex, nofollow' : undefined}
 >
   <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-10">
     <!-- Breadcrumb -->
