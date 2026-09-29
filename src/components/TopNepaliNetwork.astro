@@ -63,15 +63,23 @@ const networkApps = [
               )}
               {app.icon === 'keyboard' && (
                 <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect width="20" height="16" x="2" y="4" rx="2" />
-                  <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <line x1="6" y1="8" x2="6" y2="8.01" />
+                  <line x1="10" y1="8" x2="10" y2="8.01" />
+                  <line x1="14" y1="8" x2="14" y2="8.01" />
+                  <line x1="18" y1="8" x2="18" y2="8.01" />
+                  <line x1="6" y1="12" x2="6" y2="12.01" />
+                  <line x1="10" y1="12" x2="10" y2="12.01" />
+                  <line x1="14" y1="12" x2="14" y2="12.01" />
+                  <line x1="18" y1="12" x2="18" y2="12.01" />
+                  <line x1="7" y1="16" x2="17" y2="16" />
                 </svg>
               )}
               {app.icon === 'type' && (
                 <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="4 7 4 4 20 4 20 7" />
-                  <line x1="9" x2="15" y1="20" y2="20" />
-                  <line x1="12" x2="12" y1="4" y2="20" />
+                  <line x1="9" y1="20" x2="15" y2="20" />
+                  <line x1="12" y1="4" x2="12" y2="20" />
                 </svg>
               )}
               {app.icon === 'zap' && (
@@ -81,24 +89,24 @@ const networkApps = [
               )}
               {app.icon === 'landmark' && (
                 <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="2" x2="22" y1="22" y2="22" />
-                  <line x1="6" x2="6" y1="18" />
-                  <line x1="10" x2="10" y1="18" />
-                  <line x1="14" x2="14" y1="18" />
-                  <line x1="18" x2="18" y1="18" />
-                  <polygon points="12 2 20 7 4 7" />
+                  <line x1="3" y1="21" x2="21" y2="21" />
+                  <line x1="5" y1="21" x2="5" y2="10" />
+                  <line x1="19" y1="21" x2="19" y2="10" />
+                  <path d="M12 3l9 7H3l9-7z" />
                 </svg>
               )}
               {app.icon === 'scale' && (
                 <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
-                  <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
-                  <path d="M7 21h10" />
-                  <path d="M12 3v18" />
-                  <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" />
+                  <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
+                  <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
+                  <path d="M7 21h10"/>
+                  <path d="M12 3v18"/>
+                  <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>
                 </svg>
               )}
-              <span class="item-name">{app.name}</span>
+
+              <span class="app-name">{app.name}</span>
+              {isCurrent && <span class="active-badge">ACTIVE</span>}
             </a>
           </li>
         );
@@ -121,21 +129,28 @@ const networkApps = [
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: transparent;
-    border: 1px solid transparent;
-    color: #4b5563;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #334155;
     cursor: pointer;
     transition: all 0.15s ease;
+    padding: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
   .network-trigger-btn:hover {
     background: #f1f5f9;
-    color: #111827;
+    color: #0f172a;
+    transform: scale(1.04);
+  }
+
+  .network-trigger-btn:active {
+    transform: scale(0.96);
   }
 
   .network-trigger-btn svg {
-    width: 18px;
-    height: 18px;
+    width: 17px;
+    height: 17px;
   }
 
   .network-dropdown-panel {
@@ -146,36 +161,43 @@ const networkApps = [
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 14px;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
     padding: 6px;
-    z-index: 99999;
+    z-index: 9999;
+  }
+
+  @media (max-width: 480px) {
+    .network-dropdown-panel {
+      right: -6px;
+      width: 210px;
+    }
   }
 
   .network-dropdown-panel.hidden {
-    display: none;
+    display: none !important;
   }
 
   .panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 10px 8px 10px;
+    padding: 6px 8px 6px;
     border-bottom: 1px solid #f1f5f9;
     margin-bottom: 4px;
   }
 
   .panel-title {
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 10px;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     color: #64748b;
   }
 
   .all-apps-link {
-    font-size: 11px;
-    font-weight: 600;
-    color: #2563eb;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #21138a;
     text-decoration: none;
   }
 
@@ -195,71 +217,99 @@ const networkApps = [
   .app-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 7px 10px;
+    gap: 9px;
+    padding: 7px 9px;
     border-radius: 8px;
     text-decoration: none;
-    color: #334155;
-    font-size: 13px;
-    font-weight: 500;
+    color: #1e293b;
+    font-size: 12px;
+    font-weight: 600;
     transition: background 0.12s ease;
   }
 
   .app-item:hover {
-    background: #f8fafc;
-    color: #0f172a;
+    background: #f1f5f9;
   }
 
   .app-item.current {
     background: #eff6ff;
-    color: #1d4ed8;
-    font-weight: 600;
+    color: #21138a;
+    pointer-events: none;
   }
 
   .item-icon {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     flex-shrink: 0;
-    opacity: 0.8;
+    color: #64748b;
+    transition: color 0.12s ease;
+  }
+
+  .app-item:hover .item-icon {
+    color: #0f172a;
+  }
+
+  .app-item.current .item-icon {
+    color: #21138a;
+  }
+
+  .app-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .active-badge {
+    font-size: 8px;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: rgba(33, 19, 138, 0.1);
+    color: #21138a;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
   }
 </style>
 
 <script>
-  function setupNetworkDropdown() {
+  function setupNetworkDrawers() {
     const roots = document.querySelectorAll('.topnepali-network-root');
     roots.forEach((root) => {
-      const btn = root.querySelector('.network-trigger-btn');
+      const trigger = root.querySelector('.network-trigger-btn');
       const panel = root.querySelector('.network-dropdown-panel');
-      if (!btn || !panel) return;
+      if (!trigger || !panel) return;
 
-      btn.addEventListener('click', (e) => {
+      trigger.addEventListener('click', (e) => {
         e.stopPropagation();
         const isOpen = !panel.classList.contains('hidden');
-        if (isOpen) {
+        panel.classList.toggle('hidden', isOpen);
+        trigger.setAttribute('aria-expanded', String(!isOpen));
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!panel.contains(e.target as Node) && e.target !== trigger) {
           panel.classList.add('hidden');
-          btn.setAttribute('aria-expanded', 'false');
-        } else {
-          // Close others
-          document.querySelectorAll('.network-dropdown-panel').forEach(p => p.classList.add('hidden'));
-          panel.classList.remove('hidden');
-          btn.setAttribute('aria-expanded', 'true');
+          trigger.setAttribute('aria-expanded', 'false');
         }
       });
-    });
 
-    document.addEventListener('click', (e) => {
-      if (!(e.target as HTMLElement).closest('.topnepali-network-root')) {
-        document.querySelectorAll('.network-dropdown-panel').forEach(p => {
-          p.classList.add('hidden');
-        });
-        document.querySelectorAll('.network-trigger-btn').forEach(b => {
-          b.setAttribute('aria-expanded', 'false');
-        });
-      }
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !panel.classList.contains('hidden')) {
+          panel.classList.add('hidden');
+          trigger.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      window.addEventListener('scroll', () => {
+        if (!panel.classList.contains('hidden')) {
+          panel.classList.add('hidden');
+          trigger.setAttribute('aria-expanded', 'false');
+        }
+      }, { passive: true });
     });
   }
 
-  // Setup on page load and client transitions
-  setupNetworkDropdown();
-  document.addEventListener('astro:page-load', setupNetworkDropdown);
+  setupNetworkDrawers();
+  document.addEventListener('astro:page-load', setupNetworkDrawers);
 </script>
