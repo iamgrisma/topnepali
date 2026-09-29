@@ -1,16 +1,16 @@
 import type { APIRoute } from 'astro';
 import pluginRawCode from '../../../wp-plugin/headless/headless.php?raw';
+import { REVALIDATE_SECRET } from '../../config';
 
 // Extract version dynamically from plugin code header
 const versionMatch = pluginRawCode.match(/Version:\s*([0-9\.]+)/i);
-const PLUGIN_VERSION = versionMatch ? versionMatch[1] : '1.1.0';
+const PLUGIN_VERSION = versionMatch ? versionMatch[1] : '1.2.2';
 
 export const GET: APIRoute = async ({ url, request }) => {
   const reqSecret = url.searchParams.get('secret') || request.headers.get('x-revalidate-secret');
-  const configuredSecret = import.meta.env.REVALIDATE_SECRET || 'topnepali_revalidate_secure_token';
 
   // Strictly enforce secret token authentication to protect private plugin distribution
-  if (!reqSecret || reqSecret !== configuredSecret) {
+  if (!reqSecret || reqSecret !== REVALIDATE_SECRET) {
     return new Response(JSON.stringify({ error: 'Unauthorized: Valid secret token required' }), {
       status: 401,
       headers: {
