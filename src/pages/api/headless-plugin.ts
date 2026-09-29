@@ -28,8 +28,8 @@ export const GET: APIRoute = async ({ url, request }) => {
   if (isInfo) {
     return new Response(
       JSON.stringify({
-        name: 'TopNepali Headless',
-        slug: 'headless',
+        name: 'TopNepali Headless Engine',
+        slug: 'topnepali-headless',
         version: PLUGIN_VERSION,
         author: 'Top Nepali',
         homepage: origin,
@@ -39,7 +39,7 @@ export const GET: APIRoute = async ({ url, request }) => {
         last_updated: new Date().toISOString(),
         sections: {
           description: 'High-performance Headless WordPress engine for Astro & Cloudflare Edge.',
-          changelog: `v${PLUGIN_VERSION}: Cloudflare Edge-served distribution supporting private GitHub repositories with 1-click in-place updater and edge warming.`,
+          changelog: `v${PLUGIN_VERSION}: Cloudflare Edge-served distribution with WordPress.org collision blocking and 1-click in-place updater.`,
         },
       }),
       {

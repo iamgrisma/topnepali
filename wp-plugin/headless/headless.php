@@ -1,13 +1,14 @@
 <?php
 /**
- * Plugin Name: TopNepali Headless
+ * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
- * Description: High-performance Headless WordPress engine for Astro & Cloudflare Edge. Provides automatic on-demand cache revalidation, preview rewrites, and REST API optimizations.
- * Version: 1.2.1
+ * Description: High-performance Headless WordPress engine for Astro & Cloudflare Edge. Provides automatic on-demand cache revalidation, preview rewrites, Rank Math head bridge, and REST API edge caching.
+ * Version: 1.2.2
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
  * Text Domain: topnepali-headless
+ * Update URI: https://topnepali.com/api/headless-plugin
  */
 
 if (!defined('ABSPATH')) {
@@ -15,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.2.1';
+    const VERSION = '1.2.2';
     const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/iamgrisma/topnepali/main/wp-plugin/headless/headless.php';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
@@ -36,6 +37,9 @@ class TopNepali_Headless_Plugin {
             add_action('admin_menu', array($this, 'register_admin_menu'));
             add_action('admin_init', array($this, 'register_settings'));
             add_filter('site_transient_update_plugins', array($this, 'check_plugin_update'));
+
+            // Block WordPress.org from ever checking or overriding this private in-house plugin
+            add_filter('http_request_args', array($this, 'prevent_wporg_update_check'), 10, 2);
         }
 
         // Preview & View link rewrites
@@ -193,6 +197,26 @@ class TopNepali_Headless_Plugin {
     }
 
     /**
+     * Prevent WordPress.org from overriding this plugin with directory plugins
+     * Strips topnepali-headless from the update-check payload sent to api.wordpress.org
+     */
+    public function prevent_wporg_update_check($args, $url) {
+        if (strpos($url, 'api.wordpress.org/plugins/update-check') === false) {
+            return $args;
+        }
+        if (empty($args['body']['plugins'])) {
+            return $args;
+        }
+        $plugins = json_decode($args['body']['plugins'], true);
+        $plugin_file = plugin_basename(__FILE__);
+        if (isset($plugins['plugins'][$plugin_file])) {
+            unset($plugins['plugins'][$plugin_file]);
+            $args['body']['plugins'] = wp_json_encode($plugins);
+        }
+        return $args;
+    }
+
+    /**
      * Check for plugin updates against Cloudflare Edge API / GitHub
      */
     public function check_plugin_update($transient) {
@@ -204,7 +228,7 @@ class TopNepali_Headless_Plugin {
         if ($remote_version && version_compare(self::VERSION, $remote_version, '<')) {
             $plugin_file = plugin_basename(__FILE__);
             $obj = new stdClass();
-            $obj->slug = 'headless';
+            $obj->slug = 'topnepali-headless';
             $obj->plugin = $plugin_file;
             $obj->new_version = $remote_version;
             $obj->url = $this->get_frontend_url();
