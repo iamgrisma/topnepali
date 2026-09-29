@@ -34,30 +34,34 @@ export const POST: APIRoute = async (context) => {
     const clearedCacheCount = clearWpCache(slug || undefined);
 
     // 4. Determine URLs to purge from Cloudflare Global Edge CDN
+    const reqOrigin = url.origin.replace(/\/+$/, '');
     const siteUrl = SITE_URL.replace(/\/+$/, '');
+    const baseUrls = Array.from(new Set([reqOrigin, siteUrl]));
     const purgeUrls: string[] = [];
 
-    // Always purge the homepage and RSS/sitemap because latest post feeds change on update
-    purgeUrls.push(`${siteUrl}/`);
-    purgeUrls.push(`${siteUrl}`);
-    purgeUrls.push(`${siteUrl}/rss.xml`);
-    purgeUrls.push(`${siteUrl}/sitemap.xml`);
-    purgeUrls.push(`${siteUrl}/api/posts`);
+    for (const base of baseUrls) {
+      // Always purge the homepage and RSS/sitemap because latest post feeds change on update
+      purgeUrls.push(`${base}/`);
+      purgeUrls.push(`${base}`);
+      purgeUrls.push(`${base}/rss.xml`);
+      purgeUrls.push(`${base}/sitemap.xml`);
+      purgeUrls.push(`${base}/api/posts`);
 
-    if (slug) {
-      const cleanSlug = String(slug).replace(/^\/+|\/+$/g, '');
-      purgeUrls.push(`${siteUrl}/${cleanSlug}`);
-      purgeUrls.push(`${siteUrl}/${cleanSlug}/`);
-    }
+      if (slug) {
+        const cleanSlug = String(slug).replace(/^\/+|\/+$/g, '');
+        purgeUrls.push(`${base}/${cleanSlug}`);
+        purgeUrls.push(`${base}/${cleanSlug}/`);
+      }
 
-    if (Array.isArray(customUrls)) {
-      for (const u of customUrls) {
-        const path = u.startsWith('/') ? u : `/${u}`;
-        const cleanPath = path.replace(/\/+$/, '');
-        const fullUrlNoSlash = `${siteUrl}${cleanPath}`;
-        const fullUrlWithSlash = `${siteUrl}${cleanPath}/`;
-        if (!purgeUrls.includes(fullUrlNoSlash)) purgeUrls.push(fullUrlNoSlash);
-        if (!purgeUrls.includes(fullUrlWithSlash)) purgeUrls.push(fullUrlWithSlash);
+      if (Array.isArray(customUrls)) {
+        for (const u of customUrls) {
+          const path = u.startsWith('/') ? u : `/${u}`;
+          const cleanPath = path.replace(/\/+$/, '');
+          const fullUrlNoSlash = `${base}${cleanPath}`;
+          const fullUrlWithSlash = `${base}${cleanPath}/`;
+          if (!purgeUrls.includes(fullUrlNoSlash)) purgeUrls.push(fullUrlNoSlash);
+          if (!purgeUrls.includes(fullUrlWithSlash)) purgeUrls.push(fullUrlWithSlash);
+        }
       }
     }
 
@@ -113,10 +117,13 @@ export const POST: APIRoute = async (context) => {
     let warmedUrls: string[] = [];
 
     if (shouldWarm) {
-      const warmTargets = [
-        `${siteUrl}/`,
-        slug ? `${siteUrl}/${String(slug).replace(/^\/+|\/+$/g, '')}` : null,
-      ].filter(Boolean) as string[];
+      const warmTargets: string[] = [];
+      for (const base of baseUrls) {
+        warmTargets.push(`${base}/`);
+        if (slug) {
+          warmTargets.push(`${base}/${String(slug).replace(/^\/+|\/+$/g, '')}`);
+        }
+      }
 
       try {
         const warmResults = await Promise.allSettled(
