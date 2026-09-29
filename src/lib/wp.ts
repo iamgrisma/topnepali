@@ -7,18 +7,15 @@ import type {
   PaginationResult
 } from '../types/wp';
 
-// Configurable WordPress endpoint — defaults to topnepali.com or any WP blog
-const DEFAULT_WP_URL = 'https://topnepali.com';
+// Configurable WordPress endpoint — defaults to wp.topnepali.com
+const DEFAULT_WP_URL = 'https://wp.topnepali.com';
 
 export function getWpBaseUrl(): string {
   const globalCfEnv = typeof globalThis !== 'undefined' ? (globalThis as any).__CF_ENV__ : null;
   const envUrl =
     globalCfEnv?.WORDPRESS_URL ||
     globalCfEnv?.WP_URL ||
-    globalCfEnv?.URL ||
-    globalCfEnv?.SITE_URL ||
-    (typeof process !== 'undefined' && (process.env?.WORDPRESS_URL || process.env?.WP_URL || process.env?.URL || process.env?.SITE_URL)) ||
-    (typeof import.meta !== 'undefined' && ((import.meta as any).env?.WORDPRESS_URL || (import.meta as any).env?.WP_URL || (import.meta as any).env?.URL || (import.meta as any).env?.SITE_URL));
+    (typeof process !== 'undefined' && (process.env?.WORDPRESS_URL || process.env?.WP_URL));
   const raw = envUrl || DEFAULT_WP_URL;
   return raw.replace(/\/+$/, '');
 }
