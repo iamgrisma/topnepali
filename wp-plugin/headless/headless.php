@@ -3,7 +3,7 @@
  * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
  * Description: High-performance Headless WordPress engine for Astro & Cloudflare Edge. Provides automatic on-demand cache revalidation, preview rewrites, Rank Math head bridge, and REST API edge caching.
- * Version: 1.2.2
+ * Version: 1.3.0
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.2.2';
+    const VERSION = '1.3.0';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
     const OPTION_SECRET = 'topnepali_headless_secret';
@@ -35,6 +35,10 @@ class TopNepali_Headless_Plugin {
         if (is_admin()) {
             add_action('admin_menu', array($this, 'register_admin_menu'));
             add_action('admin_init', array($this, 'register_settings'));
+
+            // Native WordPress Core Plugin Update Hooks
+            add_filter('pre_set_site_transient_update_plugins', array($this, 'check_for_update'));
+            add_filter('plugins_api', array($this, 'plugin_popup_info'), 20, 3);
         }
 
         // Preview & View link rewrites
@@ -507,10 +511,42 @@ class TopNepali_Headless_Plugin {
             );
         }
 
+        $update_check_result = null;
+        if (isset($_POST['topnepali_check_updates']) && check_admin_referer('topnepali_update_action', 'topnepali_update_nonce')) {
+            delete_transient('topnepali_headless_update_info');
+            delete_site_transient('update_plugins');
+            $remote = $this->get_remote_info(true);
+            if ($remote && !empty($remote['version'])) {
+                $has_update = version_compare(self::VERSION, $remote['version'], '<');
+                $update_check_result = array(
+                    'success'    => true,
+                    'has_update' => $has_update,
+                    'version'    => $remote['version'],
+                    'message'    => $has_update
+                        ? "New update available: v{$remote['version']} (Current: v" . self::VERSION . "). You can update now from the WordPress Updates screen or Plugins page."
+                        : "Plugin is up to date (v" . self::VERSION . ").",
+                );
+            } else {
+                $update_check_result = array(
+                    'success' => false,
+                    'message' => 'Failed to reach Astro update server. Please verify your Frontend URL and Secret Token.',
+                );
+            }
+        }
+
         ?>
         <div class="wrap">
             <h1>TopNepali Headless Configuration</h1>
             <p>Connects your WordPress backend with your Astro SSR / Cloudflare Edge frontend for instant cache revalidation and pre-warming.</p>
+
+            <?php if ($update_check_result): ?>
+                <div class="notice notice-<?php echo $update_check_result['success'] ? ($update_check_result['has_update'] ? 'warning' : 'success') : 'error'; ?> is-dismissible">
+                    <p><strong>Plugin Update Status:</strong> <?php echo esc_html($update_check_result['message']); ?></p>
+                    <?php if (!empty($update_check_result['has_update'])): ?>
+                        <p><a href="<?php echo esc_url(admin_url('update-core.php')); ?>" class="button button-primary">Go to WordPress Updates</a></p>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
 
             <?php if ($test_result): ?>
                 <div class="notice notice-<?php echo $test_result['success'] ? 'success' : 'error'; ?> is-dismissible">
@@ -582,6 +618,19 @@ class TopNepali_Headless_Plugin {
 
             <hr style="margin: 30px 0;" />
 
+            <h2>Plugin Updates (Native WordPress Upgrader)</h2>
+            <p>Installed Version: <strong>v<?php echo esc_html(self::VERSION); ?></strong></p>
+            <p>Updates are delivered safely as standard zip archives via WordPress core's native upgrader with zero raw file write risks.</p>
+            <form method="post" action="">
+                <?php wp_nonce_field('topnepali_update_action', 'topnepali_update_nonce'); ?>
+                <input type="hidden" name="topnepali_check_updates" value="1" />
+                <button type="submit" class="button button-secondary">
+                    Check for Plugin Updates Now
+                </button>
+            </form>
+
+            <hr style="margin: 30px 0;" />
+
             <h2>Pre-Warm Edge CDN Cache</h2>
             <p>Proactively pre-warms Cloudflare's Global Edge CDN so visitors receive instant sub-100ms responses with zero cold start delays.</p>
             <form method="post" action="">
@@ -605,6 +654,145 @@ class TopNepali_Headless_Plugin {
             </form>
         </div>
         <?php
+    }
+
+    /**
+     * Check for plugin updates using WordPress core's native update pipeline
+     *
+     * @param object $transient The update_plugins site transient
+     * @return object
+     */
+    public function check_for_update($transient) {
+        if (empty($transient) || !is_object($transient)) {
+            return $transient;
+        }
+
+        $plugin_file = plugin_basename(__FILE__);
+        $remote_info = $this->get_remote_info();
+
+        if (empty($remote_info) || empty($remote_info['version'])) {
+            return $transient;
+        }
+
+        $item = new stdClass();
+        $item->id           = 'topnepali-headless';
+        $item->slug         = 'topnepali-headless';
+        $item->plugin       = $plugin_file;
+        $item->new_version  = $remote_info['version'];
+        $item->url          = !empty($remote_info['homepage']) ? $remote_info['homepage'] : 'https://topnepali.com';
+        $item->package      = !empty($remote_info['download_url']) ? $remote_info['download_url'] : '';
+        $item->tested       = !empty($remote_info['tested']) ? $remote_info['tested'] : '6.7';
+        $item->requires     = !empty($remote_info['requires']) ? $remote_info['requires'] : '5.6';
+        $item->requires_php = !empty($remote_info['requires_php']) ? $remote_info['requires_php'] : '7.4';
+
+        if (version_compare(self::VERSION, $remote_info['version'], '<')) {
+            $transient->response[$plugin_file] = $item;
+            if (isset($transient->no_update[$plugin_file])) {
+                unset($transient->no_update[$plugin_file]);
+            }
+        } else {
+            $transient->no_update[$plugin_file] = $item;
+            if (isset($transient->response[$plugin_file])) {
+                unset($transient->response[$plugin_file]);
+            }
+        }
+
+        return $transient;
+    }
+
+    /**
+     * Display plugin details modal in WordPress Admin (View details)
+     *
+     * @param false|object|array $result The result object
+     * @param string $action The type of information being requested
+     * @param object $args Plugin API arguments
+     * @return false|object
+     */
+    public function plugin_popup_info($result, $action, $args) {
+        if ($action !== 'plugin_information') {
+            return $result;
+        }
+
+        if (empty($args->slug) || $args->slug !== 'topnepali-headless') {
+            return $result;
+        }
+
+        $remote_info = $this->get_remote_info();
+        if (empty($remote_info)) {
+            return $result;
+        }
+
+        $res = new stdClass();
+        $res->name          = !empty($remote_info['name']) ? $remote_info['name'] : 'TopNepali Headless Engine';
+        $res->slug          = 'topnepali-headless';
+        $res->version       = !empty($remote_info['version']) ? $remote_info['version'] : self::VERSION;
+        $res->author        = !empty($remote_info['author']) ? '<a href="' . esc_url($remote_info['homepage']) . '">' . esc_html($remote_info['author']) . '</a>' : '<a href="https://topnepali.com">Top Nepali</a>';
+        $res->homepage      = !empty($remote_info['homepage']) ? $remote_info['homepage'] : 'https://topnepali.com';
+        $res->download_link = !empty($remote_info['download_url']) ? $remote_info['download_url'] : '';
+        $res->tested        = !empty($remote_info['tested']) ? $remote_info['tested'] : '6.7';
+        $res->requires      = !empty($remote_info['requires']) ? $remote_info['requires'] : '5.6';
+        $res->requires_php  = !empty($remote_info['requires_php']) ? $remote_info['requires_php'] : '7.4';
+        $res->last_updated  = !empty($remote_info['last_updated']) ? $remote_info['last_updated'] : '';
+        $res->sections      = !empty($remote_info['sections']) ? (array) $remote_info['sections'] : array(
+            'description' => 'High-performance Headless WordPress engine for Astro & Cloudflare Edge.',
+            'changelog'   => 'Native WordPress update pipeline.',
+        );
+
+        return $res;
+    }
+
+    /**
+     * Fetch remote version and metadata from Astro API with transient caching
+     *
+     * @param bool $force Force bypass transient cache
+     * @return array|null
+     */
+    public function get_remote_info($force = false) {
+        $transient_key = 'topnepali_headless_update_info';
+
+        if (!$force) {
+            $cached = get_transient($transient_key);
+            if ($cached !== false && is_array($cached)) {
+                return $cached;
+            }
+        }
+
+        $frontend_url = $this->get_frontend_url();
+        $secret = $this->get_secret();
+
+        if (empty($frontend_url) || empty($secret)) {
+            return null;
+        }
+
+        $info_url = add_query_arg(array(
+            'action' => 'info',
+            'secret' => $secret,
+        ), $frontend_url . '/api/headless-plugin');
+
+        $response = wp_remote_get($info_url, array(
+            'timeout'   => 10,
+            'sslverify' => true,
+            'headers'   => array(
+                'Accept'     => 'application/json',
+                'User-Agent' => 'TopNepali-WP-NativeUpdater/' . self::VERSION . '; ' . home_url(),
+            ),
+        ));
+
+        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+            return null;
+        }
+
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+
+        if (!is_array($data) || empty($data['version'])) {
+            return null;
+        }
+
+        // Cache update check for 1 hour in transient
+        set_transient($transient_key, $data, HOUR_IN_SECONDS);
+
+        return $data;
     }
 }
 
