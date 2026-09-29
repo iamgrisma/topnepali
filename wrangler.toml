@@ -7,8 +7,9 @@ pages_build_output_dir = "./dist"
 # CRITICAL SECURITY POLICY — DO NOT EDIT WITHOUT READING:
 # NEVER PUT SECRETS OR PRIVATE TOKENS IN THIS FILE!
 #
-# DO NOT add REVALIDATE_SECRET, CF_API_TOKEN, CLOUDFLARE_ZONE_ID, or any other
-# sensitive credentials to this [vars] section or anywhere in wrangler.toml!
+# DO NOT add REVALIDATE_SECRET, CF_API_TOKEN, database passwords, or any other
+# sensitive secret tokens to this [vars] section or anywhere in git!
+# (Note: Public non-secret IDs like CF_ZONE_ID are fine in [vars]).
 #
 # WHY:
 # 1. This file is tracked in git and publicly accessible in version control.
@@ -24,3 +25,4 @@ WORDPRESS_URL = "https://wp.topnepali.com"
 PUBLIC_GA_ID = "G-K2R0GSQE0M"
 PUBLIC_GTM_ID = "GTM-MD2NWFJ"
 PUBLIC_ADSENSE_ID = "ca-pub-5410507143596599"
+CF_ZONE_ID = "e3ddc9ce395e8c2c38a9d14e002c8d57"
