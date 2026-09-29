@@ -134,13 +134,9 @@ if (fs.existsSync(serverWranglerJson)) {
 const wranglerTomlFile = path.join(rootDir, 'wrangler.toml');
 if (!fs.existsSync(wranglerTomlFile)) {
   const tomlContent = `name = "topnepali"
-main = "@astrojs/cloudflare/entrypoints/server"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
-
-[assets]
-directory = "./dist/client"
-binding = "ASSETS"
+pages_build_output_dir = "./dist"
 
 [vars]
 URL = "https://topnepali.com"
