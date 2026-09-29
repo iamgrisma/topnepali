@@ -3,7 +3,7 @@
  * Plugin Name: TopNepali Headless
  * Plugin URI: https://topnepali.com
  * Description: High-performance Headless WordPress engine for Astro & Cloudflare Edge. Provides automatic on-demand cache revalidation, preview rewrites, and REST API optimizations.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.1.0';
+    const VERSION = '1.2.0';
     const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/iamgrisma/topnepali/main/wp-plugin/headless/headless.php';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
@@ -171,7 +171,22 @@ class TopNepali_Headless_Plugin {
     }
 
     /**
-     * Check for plugin updates against GitHub
+     * Get the endpoint URL for checking updates or downloading the plugin
+     * Routes via Cloudflare Edge API to support private GitHub repositories
+     */
+    public function get_update_endpoint($action = 'info') {
+        $frontend_url = $this->get_frontend_url();
+        $secret = $this->get_secret();
+        $param = ($action === 'download') ? 'download=1' : 'info=1';
+        $url = $frontend_url . '/api/headless-plugin?' . $param;
+        if (!empty($secret)) {
+            $url .= '&secret=' . urlencode($secret);
+        }
+        return $url;
+    }
+
+    /**
+     * Check for plugin updates against Cloudflare Edge API / GitHub
      */
     public function check_plugin_update($transient) {
         if (empty($transient->checked)) {
@@ -185,8 +200,8 @@ class TopNepali_Headless_Plugin {
             $obj->slug = 'headless';
             $obj->plugin = $plugin_file;
             $obj->new_version = $remote_version;
-            $obj->url = 'https://github.com/iamgrisma/topnepali';
-            $obj->package = self::GITHUB_RAW_URL;
+            $obj->url = $this->get_frontend_url();
+            $obj->package = $this->get_update_endpoint('download');
             $obj->tested = '6.7';
             $obj->requires = '5.6';
             $transient->response[$plugin_file] = $obj;
@@ -196,7 +211,8 @@ class TopNepali_Headless_Plugin {
     }
 
     /**
-     * Get latest remote version from GitHub
+     * Get latest remote version from Cloudflare Edge distribution API
+     * Supports private GitHub repositories seamlessly
      */
     public function get_remote_version($force = false) {
         $cached = get_transient('topnepali_headless_remote_ver');
@@ -204,44 +220,82 @@ class TopNepali_Headless_Plugin {
             return $cached;
         }
 
-        $response = wp_remote_get(self::GITHUB_RAW_URL, array(
+        $url = $this->get_update_endpoint('info');
+        $response = wp_remote_get($url, array(
+            'timeout'   => 8,
+            'sslverify' => true,
+            'headers'   => array(
+                'Accept'     => 'application/json',
+                'User-Agent' => 'TopNepali-WP/' . self::VERSION,
+            ),
+        ));
+
+        if (!is_wp_error($response)) {
+            $body = wp_remote_retrieve_body($response);
+            $data = json_decode($body, true);
+            if (!empty($data['version'])) {
+                $ver = trim($data['version']);
+                set_transient('topnepali_headless_remote_ver', $ver, 1800); // 30 mins
+                return $ver;
+            }
+        }
+
+        // Fallback: check GitHub raw in case frontend is unreachable
+        $gh_response = wp_remote_get(self::GITHUB_RAW_URL, array(
             'timeout'   => 5,
             'sslverify' => true,
         ));
 
-        if (is_wp_error($response)) {
-            return null;
-        }
-
-        $content = wp_remote_retrieve_body($response);
-        if (preg_match('/Version:\s*([0-9\.]+)/i', $content, $matches)) {
-            $ver = trim($matches[1]);
-            set_transient('topnepali_headless_remote_ver', $ver, 1800); // 30 mins
-            return $ver;
+        if (!is_wp_error($gh_response)) {
+            $content = wp_remote_retrieve_body($gh_response);
+            if (preg_match('/Version:\s*([0-9\.]+)/i', $content, $matches)) {
+                $ver = trim($matches[1]);
+                set_transient('topnepali_headless_remote_ver', $ver, 1800);
+                return $ver;
+            }
         }
 
         return null;
     }
 
     /**
-     * Perform 1-click in-place update of headless.php directly from GitHub
+     * Perform 1-click in-place update of headless.php directly from Cloudflare Edge / Astro API
+     * Seamlessly works with 100% PRIVATE GitHub repositories without any tokens or manual uploads
      */
     public function perform_in_place_update() {
         if (!current_user_can('update_plugins')) {
             return array('success' => false, 'message' => 'Unauthorized');
         }
 
-        $response = wp_remote_get(self::GITHUB_RAW_URL, array(
-            'timeout'   => 12,
+        $url = $this->get_update_endpoint('download');
+        $response = wp_remote_get($url, array(
+            'timeout'   => 15,
             'sslverify' => true,
+            'headers'   => array(
+                'Accept'     => 'text/plain',
+                'User-Agent' => 'TopNepali-WP-Updater/' . self::VERSION,
+            ),
         ));
 
-        if (is_wp_error($response)) {
-            return array('success' => false, 'message' => 'Network error: ' . $response->get_error_message());
+        $code = is_wp_error($response) ? 0 : wp_remote_retrieve_response_code($response);
+        $body = is_wp_error($response) ? '' : wp_remote_retrieve_body($response);
+
+        // Fallback: try GitHub raw if frontend download failed
+        if ($code !== 200 || empty($body) || strpos($body, 'Plugin Name: TopNepali Headless') === false) {
+            $gh_res = wp_remote_get(self::GITHUB_RAW_URL, array('timeout' => 12, 'sslverify' => true));
+            if (!is_wp_error($gh_res) && wp_remote_retrieve_response_code($gh_res) === 200) {
+                $gh_body = wp_remote_retrieve_body($gh_res);
+                if (strpos($gh_body, 'Plugin Name: TopNepali Headless') !== false) {
+                    $body = $gh_body;
+                    $code = 200;
+                    $url  = self::GITHUB_RAW_URL;
+                }
+            }
         }
 
-        $code = wp_remote_retrieve_response_code($response);
-        $body = wp_remote_retrieve_body($response);
+        if (is_wp_error($response) && empty($body)) {
+            return array('success' => false, 'message' => 'Network error: ' . $response->get_error_message());
+        }
 
         if ($code !== 200 || empty($body)) {
             return array('success' => false, 'message' => "Download failed with HTTP code {$code}.");
@@ -273,7 +327,7 @@ class TopNepali_Headless_Plugin {
         return array(
             'success' => true,
             'version' => $new_ver,
-            'message' => "TopNepali Headless updated to version {$new_ver} successfully! ({$written} bytes written)."
+            'message' => "TopNepali Headless updated to version {$new_ver} successfully! ({$written} bytes written from {$url})."
         );
     }
 
@@ -700,14 +754,21 @@ class TopNepali_Headless_Plugin {
             <hr style="margin: 30px 0;" />
 
             <h2>Plugin Self-Updater</h2>
-            <p>Directly sync this plugin with the latest code pushed to your GitHub repository without manual zipping or file uploads.</p>
+            <p>Directly sync this plugin with the latest code deployed on Cloudflare Edge without manual zipping or file uploads. <strong>100% compatible with Private GitHub repositories.</strong></p>
             <table class="form-table" role="presentation" style="margin-top:0;">
                 <tr>
                     <th scope="row">Installed Version</th>
                     <td><code><?php echo esc_html(self::VERSION); ?></code></td>
                 </tr>
                 <tr>
-                    <th scope="row">Latest Available (GitHub)</th>
+                    <th scope="row">Update Source</th>
+                    <td>
+                        <code><?php echo esc_html($this->get_update_endpoint('info')); ?></code>
+                        <p class="description">Served directly by your Astro Cloudflare Pages worker. Your GitHub repository can be 100% private.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Latest Available</th>
                     <td>
                         <code><?php echo esc_html($remote_version ?: 'Checking...'); ?></code>
                         <?php if ($remote_version && version_compare(self::VERSION, $remote_version, '<')): ?>
@@ -722,7 +783,7 @@ class TopNepali_Headless_Plugin {
                 <?php wp_nonce_field('topnepali_update_action', 'topnepali_update_nonce'); ?>
                 <input type="hidden" name="topnepali_self_update" value="1" />
                 <button type="submit" class="button button-primary">
-                    Update Plugin from GitHub (1-Click)
+                    Update Plugin (1-Click Sync)
                 </button>
             </form>
         </div>
