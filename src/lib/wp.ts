@@ -655,3 +655,23 @@ export async function getAllPostsForSitemap(): Promise<Array<{ slug: string; las
 
   return allItems;
 }
+
+/**
+ * Query WordPress Rank Math redirection for a non-post slug
+ */
+export async function getRankMathRedirection(slug: string): Promise<{ redirect_url: string; redirect_type: number } | null> {
+  const base = getWpBaseUrl();
+  const url = `${base}/wp-json/headless/v1/redirection?slug=${encodeURIComponent(slug)}`;
+  try {
+    const { data } = await fetchWithCache<{ redirect_url?: string; redirect_type?: number }>(url, 300);
+    if (data && data.redirect_url) {
+      return {
+        redirect_url: data.redirect_url,
+        redirect_type: data.redirect_type || 301,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

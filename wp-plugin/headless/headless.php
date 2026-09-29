@@ -3,7 +3,7 @@
  * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
  * Description: Enterprise Headless WordPress engine for Astro SSR & Cloudflare Edge. Provides automatic granular cache invalidation, admin bar purge controls, native WordPress core zip updates, Rank Math SEO bridge, and subdomain protection.
- * Version: 1.4.1
+ * Version: 1.5.0
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.4.1';
+    const VERSION = '1.5.0';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
     const OPTION_SECRET = 'topnepali_headless_secret';
@@ -82,6 +82,9 @@ class TopNepali_Headless_Plugin {
         add_action('rest_api_init', array($this, 'configure_rest_api'));
         add_filter('rest_post_dispatch', array($this, 'filter_rest_cache_headers'), 10, 3);
         add_filter('rest_post_query', array($this, 'filter_rest_category_children'), 10, 2);
+
+        // Dynamic Rank Math Tool Redirection Sync
+        add_action('init', array($this, 'sync_default_tool_redirections'));
     }
 
     /**
@@ -368,6 +371,22 @@ class TopNepali_Headless_Plugin {
             ),
         ));
 
+        // Enable REST updating for Rank Math Redirection fields
+        foreach (array('post', 'page') as $pt) {
+            register_post_meta($pt, 'rank_math_redirection_url', array(
+                'show_in_rest'  => true,
+                'single'        => true,
+                'type'          => 'string',
+                'auth_callback' => function() { return current_user_can('edit_posts'); },
+            ));
+            register_post_meta($pt, 'rank_math_redirection_type', array(
+                'show_in_rest'  => true,
+                'single'        => true,
+                'type'          => 'string',
+                'auth_callback' => function() { return current_user_can('edit_posts'); },
+            ));
+        }
+
         // Dedicated endpoint: /wp-json/headless/v1/head?slug=...
         register_rest_route('headless/v1', '/head', array(
             'methods'             => 'GET',
@@ -377,6 +396,19 @@ class TopNepali_Headless_Plugin {
                 'slug' => array(
                     'required'          => true,
                     'sanitize_callback' => 'sanitize_title',
+                ),
+            ),
+        ));
+
+        // Dedicated endpoint: /wp-json/headless/v1/redirection?slug=...
+        register_rest_route('headless/v1', '/redirection', array(
+            'methods'             => 'GET',
+            'callback'            => array($this, 'rest_get_redirection'),
+            'permission_callback' => '__return_true',
+            'args'                => array(
+                'slug' => array(
+                    'required'          => true,
+                    'sanitize_callback' => 'sanitize_text_field',
                 ),
             ),
         ));
@@ -542,6 +574,27 @@ class TopNepali_Headless_Plugin {
 
         $canonical = $raw_canonical ? str_replace(array('https://wp.topnepali.com', 'http://wp.topnepali.com'), $frontend_url, $raw_canonical) : null;
 
+        // Rank Math Redirection detection
+        $redirect_to = get_post_meta($post_id, 'rank_math_redirection_url', true);
+        $redirect_code = get_post_meta($post_id, 'rank_math_redirection_type', true) ?: '301';
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'rank_math_redirections';
+        if (empty($redirect_to) && $target_post && $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name) {
+            $slug = $target_post->post_name;
+            if ($slug) {
+                $row = $wpdb->get_row($wpdb->prepare(
+                    "SELECT url_to, header_code FROM {$table_name} WHERE status = 'active' AND (object_id = %d OR sources LIKE %s) ORDER BY id DESC LIMIT 1",
+                    $post_id,
+                    '%' . $wpdb->esc_like($slug) . '%'
+                ), ARRAY_A);
+                if ($row && !empty($row['url_to'])) {
+                    $redirect_to = $row['url_to'];
+                    $redirect_code = $row['header_code'] ?: '301';
+                }
+            }
+        }
+
         return array(
             'title'          => $this->resolve_seo_template_vars($raw_title, $target_post) ?: ($target_post ? $target_post->post_title : null),
             'description'    => $this->resolve_seo_template_vars($raw_desc, $target_post) ?: null,
@@ -554,6 +607,8 @@ class TopNepali_Headless_Plugin {
             'twitter_title'  => $this->resolve_seo_template_vars($raw_tw_title, $target_post) ?: null,
             'twitter_desc'   => $this->resolve_seo_template_vars($raw_tw_desc, $target_post) ?: null,
             'twitter_image'  => get_post_meta($post_id, 'rank_math_twitter_image', true) ?: null,
+            'redirect_url'   => $redirect_to ? str_replace(array('https://wp.topnepali.com', 'http://wp.topnepali.com'), $frontend_url, $redirect_to) : null,
+            'redirect_type'  => $redirect_to ? (int) $redirect_code : null,
         );
     }
 
@@ -583,6 +638,110 @@ class TopNepali_Headless_Plugin {
             'head'  => $head,
             'seo'   => $seo,
         ));
+    }
+
+    /**
+     * Dedicated REST Callback for /wp-json/headless/v1/redirection?slug=...
+     */
+    public function rest_get_redirection($request) {
+        $slug = trim($request->get_param('slug'), '/');
+        if (empty($slug)) {
+            return new WP_Error('invalid_slug', 'Missing slug parameter', array('status' => 400));
+        }
+
+        global $wpdb;
+        $frontend_url = $this->get_frontend_url();
+
+        // 1. Check if matching post or page has redirect meta
+        $post = get_page_by_path($slug, OBJECT, array('post', 'page'));
+        if ($post) {
+            $redirect_to = get_post_meta($post->ID, 'rank_math_redirection_url', true);
+            $redirect_code = get_post_meta($post->ID, 'rank_math_redirection_type', true) ?: '301';
+            if ($redirect_to) {
+                return rest_ensure_response(array(
+                    'redirect_url'  => str_replace(array('https://wp.topnepali.com', 'http://wp.topnepali.com'), $frontend_url, $redirect_to),
+                    'redirect_type' => (int) $redirect_code,
+                ));
+            }
+        }
+
+        // 2. Check Rank Math redirections table
+        $table_name = $wpdb->prefix . 'rank_math_redirections';
+        if ($wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name) {
+            $row = $wpdb->get_row($wpdb->prepare(
+                "SELECT url_to, header_code FROM {$table_name} WHERE status = 'active' AND sources LIKE %s ORDER BY id DESC LIMIT 1",
+                '%' . $wpdb->esc_like($slug) . '%'
+            ), ARRAY_A);
+            if ($row && !empty($row['url_to'])) {
+                return rest_ensure_response(array(
+                    'redirect_url'  => str_replace(array('https://wp.topnepali.com', 'http://wp.topnepali.com'), $frontend_url, $row['url_to']),
+                    'redirect_type' => (int) ($row['header_code'] ?: 301),
+                ));
+            }
+        }
+
+        return new WP_Error('not_found', 'No redirection found for slug', array('status' => 404));
+    }
+
+    /**
+     * Synchronize default legacy tool redirections to Rank Math
+     */
+    public function sync_default_tool_redirections() {
+        if (get_option('topnepali_tools_redirect_synced_v1')) {
+            return;
+        }
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'rank_math_redirections';
+        $frontend_url = $this->get_frontend_url();
+
+        $tools = array(
+            'nepali-date-converter' => '/tools/nepali-date-converter',
+            'nepali-calendar' => '/tools/calendar',
+            'nepali-land-area-converter' => '/tools/nepali-land-area-converter',
+            'foreign-exchange-rates-for-nepali-currency' => '/tools/forex',
+            'share-profit-and-commission-calculator' => '/tools/share-calculator',
+        );
+
+        $has_rm_table = ($wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name);
+
+        foreach ($tools as $slug => $dest) {
+            $post = get_page_by_path($slug, OBJECT, array('post', 'page'));
+            if ($post) {
+                update_post_meta($post->ID, 'rank_math_redirection_url', $dest);
+                update_post_meta($post->ID, 'rank_math_redirection_type', '301');
+                update_post_meta($post->ID, 'rank_math_has_redirect', 'yes');
+            }
+
+            if ($has_rm_table) {
+                $exists = $wpdb->get_var($wpdb->prepare(
+                    "SELECT id FROM {$table_name} WHERE sources LIKE %s LIMIT 1",
+                    '%' . $wpdb->esc_like($slug) . '%'
+                ));
+                if (!$exists) {
+                    $sources = serialize(array(
+                        array(
+                            'pattern'    => $slug,
+                            'comparison' => 'exact',
+                            'ignore'     => '1',
+                        )
+                    ));
+                    $wpdb->insert($table_name, array(
+                        'sources'     => $sources,
+                        'url_to'      => $dest,
+                        'header_code' => 301,
+                        'hits'        => 0,
+                        'status'      => 'active',
+                        'created'     => current_time('mysql'),
+                        'updated'     => current_time('mysql'),
+                        'object_id'   => $post ? $post->ID : 0,
+                        'object_type' => $post ? $post->post_type : 'post',
+                    ));
+                }
+            }
+        }
+
+        update_option('topnepali_tools_redirect_synced_v1', 1);
     }
 
     /**

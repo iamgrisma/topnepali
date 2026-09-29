@@ -17,7 +17,8 @@ import {
   decodeHtmlEntities,
   optimizeWpHtml,
   resolveRankMathVariables,
-  getAllCategories
+  getAllCategories,
+  getRankMathRedirection
 } from '../lib/wp';
 
 const rawSlug = Astro.params.slug;
@@ -47,14 +48,26 @@ if (KNOWN_PAGES.has(cleanSlug.toLowerCase())) {
   }
 }
 
-// If neither exists, render 404 without redirect
-if (!post && !page) {
-  Astro.response.status = 404;
-}
-
 // Prepare post metadata
 const isArticle = Boolean(post);
 const item = post || page;
+
+// 1. If post or page has Rank Math redirection configured, dynamically forward to destination
+if (item?.seo?.redirect_url) {
+  const target = item.seo.redirect_url;
+  const status = item.seo.redirect_type === 302 ? 302 : 301;
+  return Astro.redirect(target, status);
+}
+
+// 2. If neither post nor page exists, check for standalone Rank Math redirection before 404
+if (!post && !page) {
+  const rmRedirect = await getRankMathRedirection(cleanSlug);
+  if (rmRedirect?.redirect_url) {
+    const status = rmRedirect.redirect_type === 302 ? 302 : 301;
+    return Astro.redirect(rmRedirect.redirect_url, status);
+  }
+  Astro.response.status = 404;
+}
 
 // Author, Categories, Tags & Dates (prepared early for SEO variables)
 const author = post ? getPostAuthor(post) : null;

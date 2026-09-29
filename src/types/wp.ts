@@ -62,6 +62,8 @@ export interface WPSEO {
   twitter_title?: string | null;
   twitter_desc?: string | null;
   twitter_image?: string | null;
+  redirect_url?: string | null;
+  redirect_type?: number | null;
 }
 
 export interface WPPost {
