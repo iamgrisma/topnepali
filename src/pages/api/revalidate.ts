@@ -34,7 +34,9 @@ export const POST: APIRoute = async (context) => {
     const clearedCacheCount = clearWpCache(slug || undefined);
 
     // 4. Determine URLs to purge from Cloudflare Global Edge CDN
-    const reqOrigin = url.origin.replace(/\/+$/, '');
+    const hostHeader = request.headers.get('x-forwarded-host') || request.headers.get('host');
+    const protoHeader = request.headers.get('x-forwarded-proto') || 'https';
+    const reqOrigin = hostHeader ? `${protoHeader}://${hostHeader}`.replace(/\/+$/, '') : url.origin.replace(/\/+$/, '');
     const siteUrl = SITE_URL.replace(/\/+$/, '');
     const baseUrls = Array.from(new Set([reqOrigin, siteUrl]));
     const purgeUrls: string[] = [];
