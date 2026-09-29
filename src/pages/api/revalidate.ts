@@ -128,12 +128,16 @@ export const POST: APIRoute = async (context) => {
       cfZoneId =
         cfEnv.CF_ZONE_ID ||
         cfEnv.CLOUDFLARE_ZONE_ID ||
-        (typeof process !== 'undefined' ? process.env?.CF_ZONE_ID || process.env?.CLOUDFLARE_ZONE_ID : '') ||
-        '';
+        cfEnv.ZONE_ID ||
+        (typeof process !== 'undefined' ? process.env?.CF_ZONE_ID || process.env?.CLOUDFLARE_ZONE_ID || process.env?.ZONE_ID : '') ||
+        'e3ddc9ce395e8c2c38a9d14e002c8d57';
       cfApiToken =
         cfEnv.CF_API_TOKEN ||
         cfEnv.CLOUDFLARE_API_TOKEN ||
-        (typeof process !== 'undefined' ? process.env?.CF_API_TOKEN || process.env?.CLOUDFLARE_API_TOKEN : '') ||
+        cfEnv.API_TOKEN ||
+        cfEnv.CF_TOKEN ||
+        cfEnv.CLOUDFLARE_TOKEN ||
+        (typeof process !== 'undefined' ? process.env?.CF_API_TOKEN || process.env?.CLOUDFLARE_API_TOKEN || process.env?.API_TOKEN : '') ||
         '';
     } catch {}
 
