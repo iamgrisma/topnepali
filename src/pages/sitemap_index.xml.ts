@@ -34,7 +34,7 @@ export const GET: APIRoute = async () => {
       }
     }
   } catch (err) {
-    console.error('[sitemap.xml] Failed to proxy from WordPress:', err);
+    console.error('[sitemap_index] Failed to proxy from WordPress:', err);
   }
 
   // 2. Fallback sitemap index structure

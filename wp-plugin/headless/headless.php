@@ -3,7 +3,7 @@
  * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
  * Description: Enterprise Headless WordPress engine for Astro SSR & Cloudflare Edge. Provides automatic granular cache invalidation, admin bar purge controls, native WordPress core zip updates, Rank Math SEO bridge, and subdomain protection.
- * Version: 1.5.0
+ * Version: 1.5.1
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.5.0';
+    const VERSION = '1.5.1';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
     const OPTION_SECRET = 'topnepali_headless_secret';
@@ -77,6 +77,9 @@ class TopNepali_Headless_Plugin {
         add_filter('rank_math/frontend/canonical', array($this, 'filter_rank_math_url'));
         add_filter('rank_math/opengraph/url', array($this, 'filter_rank_math_url'));
         add_filter('rank_math/json_ld', array($this, 'filter_rank_math_json_ld'), 99, 1);
+        add_filter('rank_math/sitemap/url', array($this, 'filter_rank_math_sitemap_url'), 99, 2);
+        add_filter('rank_math/sitemap/entry', array($this, 'filter_rank_math_sitemap_entry'), 99, 3);
+        add_filter('rank_math/sitemap/xml_text', array($this, 'filter_rank_math_sitemap_xml_text'), 99, 1);
 
         // REST API enhancements & Edge Caching
         add_action('rest_api_init', array($this, 'configure_rest_api'));
@@ -755,6 +758,18 @@ class TopNepali_Headless_Plugin {
         if (is_preview()) return;
         if (isset($_GET['preview']) && $_GET['preview'] === 'true') return;
 
+        // Allow XML sitemaps and XSL stylesheets to render natively without frontend redirection
+        $req_uri = $_SERVER['REQUEST_URI'] ?? '/';
+        $req_path = parse_url($req_uri, PHP_URL_PATH) ?: '';
+        if (
+            preg_match('/(sitemap.*\.xml|.*-sitemap.*\.xml|.*\.xsl)$/i', $req_path) ||
+            isset($_GET['sitemap']) ||
+            isset($_GET['sitemap_index']) ||
+            isset($_GET['sitemap_n'])
+        ) {
+            return;
+        }
+
         // Block author enumeration via ?author=1
         if (isset($_GET['author'])) {
             wp_die('Author enumeration is disabled on Headless backend.', 'Forbidden', array('response' => 403));
@@ -785,6 +800,27 @@ class TopNepali_Headless_Plugin {
         if (empty($url)) return $url;
         $frontend_url = $this->get_frontend_url();
         return str_replace(array('https://wp.topnepali.com', 'http://wp.topnepali.com'), $frontend_url, $url);
+    }
+
+    public function filter_rank_math_sitemap_url($url, $type = '') {
+        if (empty($url)) return $url;
+        $frontend_url = $this->get_frontend_url();
+        return str_replace(array('https://wp.topnepali.com', 'http://wp.topnepali.com'), $frontend_url, $url);
+    }
+
+    public function filter_rank_math_sitemap_entry($entry, $type = '', $item = null) {
+        if (!is_array($entry)) return $entry;
+        $frontend_url = $this->get_frontend_url();
+        if (!empty($entry['loc'])) {
+            $entry['loc'] = str_replace(array('https://wp.topnepali.com', 'http://wp.topnepali.com'), $frontend_url, $entry['loc']);
+        }
+        return $entry;
+    }
+
+    public function filter_rank_math_sitemap_xml_text($xml) {
+        if (empty($xml)) return $xml;
+        $frontend_url = $this->get_frontend_url();
+        return str_replace(array('https://wp.topnepali.com', 'http://wp.topnepali.com'), $frontend_url, $xml);
     }
 
     /**

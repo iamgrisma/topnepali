@@ -3,4 +3,5 @@ Allow: /
 Disallow: /api/
 Disallow: /search
 
+Sitemap: https://topnepali.com/sitemap_index.xml
 Sitemap: https://topnepali.com/sitemap.xml
