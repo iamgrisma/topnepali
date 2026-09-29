@@ -106,6 +106,35 @@ export const POST: APIRoute = async (context) => {
       console.warn('[revalidate] native caches.default purge warning:', err);
     }
 
+    // 7. Proactive Cache Warming:
+    // Pre-warm the critical pages (homepage and updated post) immediately
+    // so the next human visitor receives an instant edge cache HIT without cold start latency.
+    const shouldWarm = body.warm !== false && url.searchParams.get('warm') !== '0';
+    let warmedUrls: string[] = [];
+
+    if (shouldWarm) {
+      const warmTargets = [
+        `${siteUrl}/`,
+        slug ? `${siteUrl}/${String(slug).replace(/^\/+|\/+$/g, '')}` : null,
+      ].filter(Boolean) as string[];
+
+      try {
+        const warmResults = await Promise.allSettled(
+          warmTargets.map((wUrl) =>
+            fetch(wUrl, {
+              headers: {
+                'User-Agent': 'TopNepali-Proactive-Warmer/1.0',
+                'Accept': 'text/html,application/xhtml+xml',
+              },
+            })
+          )
+        );
+        warmedUrls = warmTargets.filter((_, idx) => warmResults[idx].status === 'fulfilled');
+      } catch (warmErr) {
+        console.warn('[revalidate] proactive cache warming warning:', warmErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -114,6 +143,7 @@ export const POST: APIRoute = async (context) => {
         type,
         internalCacheEntriesCleared: clearedCacheCount,
         purgedUrls: purgeUrls,
+        warmedUrls: warmedUrls,
       }),
       {
         status: 200,

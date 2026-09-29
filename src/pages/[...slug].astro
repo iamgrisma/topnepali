@@ -6,6 +6,7 @@ import {
   getPostBySlug,
   getPageBySlug,
   getPosts,
+  getRecentPosts,
   formatDate,
   estimateReadingTime,
   getPostFeaturedImage,
@@ -78,16 +79,14 @@ const modifiedTime = post?.modified;
 const robots = typeof item?.seo?.robots === 'string' ? item.seo.robots : null;
 const headHtml = item?.head || null;
 
-// Fetch related posts if viewing an article
-let relatedPosts: any[] = [];
-if (post && primaryCategory) {
-  const relResult = await getPosts({
-    category: primaryCategory.id,
-    perPage: 3,
-    exclude: [post.id],
-  });
-  relatedPosts = relResult.data;
-}
+// Fetch related posts and recent posts in parallel (eliminates sequential API waterfall)
+const [relResult, recentPosts] = await Promise.all([
+  (post && primaryCategory)
+    ? getPosts({ category: primaryCategory.id, perPage: 3, exclude: [post.id] })
+    : Promise.resolve({ data: [] }),
+  getRecentPosts(6),
+]);
+const relatedPosts = relResult.data;
 
 const currentUrl = Astro.url.href;
 ---
@@ -367,7 +366,7 @@ const currentUrl = Astro.url.href;
 
         <!-- Right Sidebar -->
         <div class="w-full lg:w-[32%] shrink-0">
-          <Sidebar excludePostId={post?.id} />
+          <Sidebar excludePostId={post?.id} recentPosts={recentPosts} />
         </div>
 
       </div>
