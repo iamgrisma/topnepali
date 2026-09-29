@@ -54,17 +54,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
 
     // 7. Dynamic SSR HTML pages:
-    // - Visitor browser: max-age=0, must-revalidate (always checks edge)
-    // - Cloudflare Global Edge CDN: max-age=60 (1 minute) with stale-while-revalidate=300 (5 minutes)
-    //   Provides lightning-fast sub-15ms TTFB worldwide while ensuring content changes in WordPress
-    //   reflect automatically within 60 seconds without getting stuck for days.
+    // - Visitor browser: max-age=0, must-revalidate (always revalidates with Edge; instant update when purged)
+    // - Cloudflare Global Edge CDN: max-age=604800 (7 days) with stale-while-revalidate=86400 (1 day)
+    //   Provides lightning-fast sub-15ms TTFB worldwide. On-demand webhooks (/api/revalidate) purge updated URLs.
     response.headers.set('Vary', 'Accept-Encoding');
     if (pathname === '/search' || url.searchParams.has('q') || url.searchParams.has('s')) {
-      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=30, stale-while-revalidate=60');
-      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=30, stale-while-revalidate=60');
+      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=300, stale-while-revalidate=600');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=300, stale-while-revalidate=600');
     } else {
-      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=60, stale-while-revalidate=300');
-      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=60, stale-while-revalidate=300');
+      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=604800, stale-while-revalidate=86400');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=604800, stale-while-revalidate=86400');
     }
 
     // Standard modern security headers
