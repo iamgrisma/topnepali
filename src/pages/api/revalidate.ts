@@ -10,7 +10,17 @@ export const POST: APIRoute = async (context) => {
     const secretFromQuery = url.searchParams.get('secret');
     const providedSecret = authHeader?.replace(/^Bearer\s+/i, '') || secretFromQuery;
 
-    const cfEnv = (context.locals as any)?.runtime?.env || (globalThis as any).__CF_ENV__ || {};
+    let cfEnv: Record<string, any> = {};
+    try {
+      // Modern Cloudflare Workers / Astro v6+ standard
+      // @ts-ignore
+      const cf = await import('cloudflare:workers');
+      if (cf && cf.env) cfEnv = cf.env;
+    } catch {}
+    if (!cfEnv || Object.keys(cfEnv).length === 0) {
+      cfEnv = (globalThis as any).__CF_ENV__ || (typeof process !== 'undefined' ? process.env : {}) || {};
+    }
+
     const validSecrets = Array.from(new Set([
       cfEnv.REVALIDATE_SECRET,
       cfEnv.INTERNAL_API_SECRET,
