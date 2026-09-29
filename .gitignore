@@ -13,9 +13,13 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Environment
+.env
 .env.local
 .env.*.local
+.mcp-token.json
+scripts/.mcp-token.json
 
 # OS
 .DS_Store
 Thumbs.db
+
