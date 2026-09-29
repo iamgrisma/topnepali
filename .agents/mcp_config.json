@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "wordpress-topnepali": {
+      "command": "node",
+      "args": [
+        "scripts/mcp-bridge.mjs"
+      ]
+    }
+  }
+}
