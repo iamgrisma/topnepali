@@ -5,7 +5,7 @@ import { REVALIDATE_SECRET } from '../../config';
 
 // Extract version dynamically from plugin code header
 const versionMatch = pluginRawCode.match(/Version:\s*([0-9\.]+)/i);
-const PLUGIN_VERSION = versionMatch ? versionMatch[1] : '1.3.0';
+const PLUGIN_VERSION = versionMatch ? versionMatch[1] : '1.3.1';
 
 // Precompute CRC-32 table for zip archive assembly
 const CRC_TABLE = new Uint32Array(256);

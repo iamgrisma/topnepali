@@ -3,7 +3,7 @@
  * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
  * Description: High-performance Headless WordPress engine for Astro & Cloudflare Edge. Provides automatic on-demand cache revalidation, preview rewrites, Rank Math head bridge, and REST API edge caching.
- * Version: 1.3.0
+ * Version: 1.3.1
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.3.0';
+    const VERSION = '1.3.1';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
     const OPTION_SECRET = 'topnepali_headless_secret';
@@ -749,6 +749,10 @@ class TopNepali_Headless_Plugin {
      */
     public function get_remote_info($force = false) {
         $transient_key = 'topnepali_headless_update_info';
+
+        if (isset($_GET['force-check'])) {
+            $force = true;
+        }
 
         if (!$force) {
             $cached = get_transient($transient_key);
