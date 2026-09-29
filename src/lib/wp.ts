@@ -468,3 +468,50 @@ export function optimizeWpHtml(rawHtml: string): string {
 
   return html.trim();
 }
+
+/**
+ * Resolves Rank Math template variables (%title%, %currentyear%, %sep%, %sitename%, %excerpt%, etc.)
+ * Strips leaked placeholders so raw template strings like "%title% (%currentyear%) %page% %sep% %sitename%"
+ * never show up in browser titles, social tags, or search engine snippets.
+ */
+export function resolveRankMathVariables(
+  template: string | null | undefined,
+  context: {
+    title?: string;
+    excerpt?: string;
+    siteName?: string;
+    separator?: string;
+    category?: string;
+  }
+): string {
+  if (!template || typeof template !== 'string') return '';
+  const now = new Date();
+  const siteName = context.siteName || 'Top Nepali';
+  const sep = context.separator || '—';
+  const cleanTitle = context.title ? decodeHtmlEntities(stripHtml(context.title)) : '';
+  const cleanExcerpt = context.excerpt ? decodeHtmlEntities(stripHtml(context.excerpt)) : '';
+
+  let resolved = template
+    .replace(/%title%/gi, cleanTitle)
+    .replace(/%currentyear%/gi, String(now.getFullYear()))
+    .replace(/%currentmonth%/gi, now.toLocaleString('en-US', { month: 'long' }))
+    .replace(/%currentday%/gi, String(now.getDate()))
+    .replace(/%sep%/gi, sep)
+    .replace(/%sitename%/gi, siteName)
+    .replace(/%page%/gi, '')
+    .replace(/%category%/gi, context.category || '')
+    .replace(/%excerpt%/gi, cleanExcerpt)
+    .replace(/%focuskw%/gi, '')
+    .replace(/%customfield\([^)]+\)%/gi, '')
+    .replace(/%[a-z0-9_-]+%/gi, '') // Strip any unknown Rank Math variables
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // If the string was solely empty placeholders or just leftover separators, return the clean title
+  if (!resolved || resolved === sep || resolved === `${sep} ${siteName}`) {
+    return cleanTitle;
+  }
+
+  return resolved;
+}
+

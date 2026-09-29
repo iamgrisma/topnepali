@@ -366,23 +366,99 @@ class TopNepali_Headless_Plugin {
     }
 
     /**
+     * Resolve Rank Math template variables (%title%, %currentyear%, %sep%, etc.)
+     */
+    private function resolve_seo_template_vars($template, $post_obj) {
+        if (empty($template) || !is_string($template)) {
+            return null;
+        }
+
+        // Try Rank Math native variable replacement if helper class is loaded
+        if (class_exists('\RankMath\Helper') && method_exists('\RankMath\Helper', 'replace_vars')) {
+            $native = \RankMath\Helper::replace_vars($template, $post_obj);
+            if (!empty($native) && strpos($native, '%title%') === false) {
+                return trim($native);
+            }
+        }
+
+        $title = $post_obj ? $post_obj->post_title : '';
+        $site_name = get_bloginfo('name') ?: 'Top Nepali';
+        $excerpt = '';
+        if ($post_obj) {
+            $excerpt = !empty($post_obj->post_excerpt)
+                ? wp_strip_all_tags($post_obj->post_excerpt)
+                : wp_trim_words(wp_strip_all_tags($post_obj->post_content), 30);
+        }
+
+        $cats = $post_obj ? get_the_category($post_obj->ID) : array();
+        $cat_name = (!empty($cats) && !is_wp_error($cats)) ? $cats[0]->name : '';
+
+        $resolved = str_ireplace(
+            array(
+                '%title%',
+                '%currentyear%',
+                '%currentmonth%',
+                '%currentday%',
+                '%sep%',
+                '%sitename%',
+                '%page%',
+                '%category%',
+                '%excerpt%',
+                '%focuskw%',
+            ),
+            array(
+                $title,
+                date('Y'),
+                date('F'),
+                date('j'),
+                '—',
+                $site_name,
+                '',
+                $cat_name,
+                $excerpt,
+                '',
+            ),
+            $template
+        );
+
+        // Strip any residual unknown %...% placeholders
+        $resolved = preg_replace('/%[a-z0-9_-]+%/i', '', $resolved);
+        $resolved = trim(preg_replace('/\s+/', ' ', $resolved));
+
+        if (empty($resolved) || $resolved === '—' || $resolved === '— ' . $site_name) {
+            return $title;
+        }
+
+        return $resolved;
+    }
+
+    /**
      * Get structured Rank Math SEO fields for a post/page
      */
     public function get_rank_math_seo_fields($post_arr) {
         $post_id = is_array($post_arr) ? ($post_arr['id'] ?? 0) : $post_arr;
         if (!$post_id) return null;
 
+        $target_post = get_post($post_id);
+
+        $raw_title     = get_post_meta($post_id, 'rank_math_title', true);
+        $raw_desc      = get_post_meta($post_id, 'rank_math_description', true);
+        $raw_og_title  = get_post_meta($post_id, 'rank_math_facebook_title', true);
+        $raw_og_desc   = get_post_meta($post_id, 'rank_math_facebook_description', true);
+        $raw_tw_title  = get_post_meta($post_id, 'rank_math_twitter_title', true);
+        $raw_tw_desc   = get_post_meta($post_id, 'rank_math_twitter_description', true);
+
         return array(
-            'title'          => get_post_meta($post_id, 'rank_math_title', true) ?: null,
-            'description'    => get_post_meta($post_id, 'rank_math_description', true) ?: null,
+            'title'          => $this->resolve_seo_template_vars($raw_title, $target_post) ?: ($target_post ? $target_post->post_title : null),
+            'description'    => $this->resolve_seo_template_vars($raw_desc, $target_post) ?: null,
             'canonical_url'  => get_post_meta($post_id, 'rank_math_canonical_url', true) ?: null,
             'focus_keyword'  => get_post_meta($post_id, 'rank_math_focus_keyword', true) ?: null,
             'robots'         => get_post_meta($post_id, 'rank_math_robots', true) ?: null,
-            'og_title'       => get_post_meta($post_id, 'rank_math_facebook_title', true) ?: null,
-            'og_description' => get_post_meta($post_id, 'rank_math_facebook_description', true) ?: null,
+            'og_title'       => $this->resolve_seo_template_vars($raw_og_title, $target_post) ?: null,
+            'og_description' => $this->resolve_seo_template_vars($raw_og_desc, $target_post) ?: null,
             'og_image'       => get_post_meta($post_id, 'rank_math_facebook_image', true) ?: null,
-            'twitter_title'  => get_post_meta($post_id, 'rank_math_twitter_title', true) ?: null,
-            'twitter_desc'   => get_post_meta($post_id, 'rank_math_twitter_description', true) ?: null,
+            'twitter_title'  => $this->resolve_seo_template_vars($raw_tw_title, $target_post) ?: null,
+            'twitter_desc'   => $this->resolve_seo_template_vars($raw_tw_desc, $target_post) ?: null,
             'twitter_image'  => get_post_meta($post_id, 'rank_math_twitter_image', true) ?: null,
         );
     }
