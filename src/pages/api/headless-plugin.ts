@@ -9,9 +9,9 @@ export const GET: APIRoute = async ({ url, request }) => {
   const reqSecret = url.searchParams.get('secret') || request.headers.get('x-revalidate-secret');
   const configuredSecret = import.meta.env.REVALIDATE_SECRET || 'topnepali_revalidate_secure_token';
 
-  // If a secret is provided, verify it
-  if (reqSecret && reqSecret !== configuredSecret) {
-    return new Response(JSON.stringify({ error: 'Unauthorized: Invalid secret token' }), {
+  // Strictly enforce secret token authentication to protect private plugin distribution
+  if (!reqSecret || reqSecret !== configuredSecret) {
+    return new Response(JSON.stringify({ error: 'Unauthorized: Valid secret token required' }), {
       status: 401,
       headers: {
         'Content-Type': 'application/json',

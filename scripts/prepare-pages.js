@@ -26,8 +26,8 @@ if (fs.existsSync(clientDir)) {
   console.log(`[prepare-pages] Copied static client assets to dist/ root (${items.length} items)`);
 }
 
-// 1.1 Ensure root-level favicon, robots.txt, topnepali-headless.zip are present at dist/ root
-['robots.txt', 'favicon.ico', 'topnepali-headless.zip'].forEach((asset) => {
+// 1.1 Ensure root-level favicon, robots.txt are present at dist/ root
+['robots.txt', 'favicon.ico'].forEach((asset) => {
   const pubPath = path.join(rootDir, 'public', asset);
   if (fs.existsSync(pubPath)) {
     fs.copyFileSync(pubPath, path.join(distDir, asset));
