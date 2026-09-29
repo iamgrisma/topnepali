@@ -49,6 +49,7 @@ class TopNepali_Headless_Plugin {
         // REST API enhancements & Edge Caching
         add_action('rest_api_init', array($this, 'configure_rest_api'));
         add_filter('rest_post_dispatch', array($this, 'filter_rest_cache_headers'), 10, 3);
+        add_filter('rest_post_query', array($this, 'filter_rest_category_children'), 10, 2);
     }
 
     /**
@@ -74,6 +75,20 @@ class TopNepali_Headless_Plugin {
         }
 
         return $response;
+    }
+
+    /**
+     * Include child category posts in WordPress REST API queries, matching core WP_Query theme behavior
+     */
+    public function filter_rest_category_children($args, $request) {
+        if (!empty($args['tax_query']) && is_array($args['tax_query'])) {
+            foreach ($args['tax_query'] as $key => $clause) {
+                if (is_array($clause) && isset($clause['taxonomy']) && $clause['taxonomy'] === 'category') {
+                    $args['tax_query'][$key]['include_children'] = true;
+                }
+            }
+        }
+        return $args;
     }
 
     /**

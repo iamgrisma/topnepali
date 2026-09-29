@@ -242,14 +242,39 @@ export async function getPageBySlug(slug: string): Promise<WPPage | null> {
 }
 
 /**
- * Fetch all categories with edge / in-memory cache
+ * Fetch all categories with edge / in-memory cache and recursive padded counts
  */
 export async function getAllCategories(): Promise<WPCategory[]> {
   const base = getWpBaseUrl();
   const url = `${base}/wp-json/wp/v2/categories?per_page=100&_fields=id,count,description,link,name,slug,taxonomy,parent`;
   try {
     const { data } = await fetchWithCache<WPCategory[]>(url, undefined, 86400);
-    return Array.isArray(data) && data.length > 0 ? data : DEFAULT_TOP_CATEGORIES;
+    const rawCategories = Array.isArray(data) && data.length > 0 ? data : DEFAULT_TOP_CATEGORIES;
+
+    // Pad counts recursively so parent categories accurately reflect total posts under them
+    return rawCategories.map((c) => {
+      const descIds: number[] = [c.id];
+      function collect(pid: number) {
+        for (const item of rawCategories) {
+          if (item.parent === pid && !descIds.includes(item.id)) {
+            descIds.push(item.id);
+            collect(item.id);
+          }
+        }
+      }
+      collect(c.id);
+
+      if (descIds.length === 1) return c; // Leaf category, keep exact count
+
+      const totalRecursiveCount = rawCategories
+        .filter((item) => descIds.includes(item.id))
+        .reduce((sum, item) => sum + (item.count || 0), 0);
+
+      return {
+        ...c,
+        count: Math.max(c.count || 0, totalRecursiveCount),
+      };
+    });
   } catch (err) {
     console.warn('getAllCategories error, falling back to static:', err);
     return DEFAULT_TOP_CATEGORIES;
@@ -278,36 +303,27 @@ export async function getCategoryAndDescendantIds(categoryId: number): Promise<n
 }
 
 /**
- * Fetch list of categories
+ * Fetch list of categories (sorted by post count)
  */
 export async function getCategories(options: { perPage?: number; hideEmpty?: boolean } = {}): Promise<WPCategory[]> {
-  const base = getWpBaseUrl();
   const { perPage = 50, hideEmpty = true } = options;
-  const params = new URLSearchParams({
-    per_page: String(perPage),
-    hide_empty: hideEmpty ? 'true' : 'false',
-    orderby: 'count',
-    order: 'desc',
-    _fields: 'id,count,description,link,name,slug,taxonomy,parent',
-  });
-
-  const url = `${base}/wp-json/wp/v2/categories?${params.toString()}`;
-  try {
-    const { data } = await fetchWithCache<WPCategory[]>(url, undefined, 86400);
-    return Array.isArray(data) && data.length > 0 ? data : DEFAULT_TOP_CATEGORIES;
-  } catch (err) {
-    console.warn('getCategories falling back to static top categories:', err);
-    return DEFAULT_TOP_CATEGORIES;
+  const allCategories = await getAllCategories();
+  let list = allCategories;
+  if (hideEmpty) {
+    list = list.filter((c) => (c.count || 0) > 0);
   }
+  list.sort((a, b) => (b.count || 0) - (a.count || 0));
+  return list.slice(0, perPage);
 }
 
 /**
- * Fetch category by slug — instant local resolution for top categories
+ * Fetch category by slug — uses cached full category tree for instant resolution with correct parent and padded count
  */
 export async function getCategoryBySlug(slug: string): Promise<WPCategory | null> {
   const cleanSlug = slug.toLowerCase().trim();
-  const matched = DEFAULT_TOP_CATEGORIES.find((c) => c.slug === cleanSlug);
-  if (matched) return matched;
+  const allCategories = await getAllCategories();
+  const found = allCategories.find((c) => c.slug === cleanSlug);
+  if (found) return found;
 
   const base = getWpBaseUrl();
   const url = `${base}/wp-json/wp/v2/categories?slug=${encodeURIComponent(cleanSlug)}&_fields=id,count,description,link,name,slug,taxonomy,parent`;

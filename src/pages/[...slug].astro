@@ -15,7 +15,8 @@ import {
   getPostTags,
   stripHtml,
   optimizeWpHtml,
-  resolveRankMathVariables
+  resolveRankMathVariables,
+  getAllCategories
 } from '../lib/wp';
 
 const rawSlug = Astro.params.slug;
@@ -59,6 +60,9 @@ const author = post ? getPostAuthor(post) : null;
 const categories = post ? getPostCategories(post) : [];
 const tags = post ? getPostTags(post) : [];
 const primaryCategory = categories[0];
+const allCategories = await getAllCategories();
+const fullPrimary = primaryCategory ? allCategories.find((ac) => ac.id === primaryCategory.id || ac.slug === primaryCategory.slug) : null;
+const parentCategory = (fullPrimary && fullPrimary.parent > 0) ? allCategories.find((p) => p.id === fullPrimary.parent) : null;
 
 // 1. Title: Prefer Rank Math SEO title if present, fallback to post title
 const postRawTitle = item ? item.title.rendered : 'Page Not Found';
@@ -195,6 +199,14 @@ const currentUrl = Astro.url.href;
       <nav class="flex items-center gap-2 text-xs text-slate-500 mb-6 flex-wrap" aria-label="Breadcrumb">
         <a href="/" class="hover:text-indigo-600">Home</a>
         <span>/</span>
+        {parentCategory && (
+          <>
+            <a href={`/category/${parentCategory.slug}`} class="hover:text-indigo-600">
+              {parentCategory.name}
+            </a>
+            <span>/</span>
+          </>
+        )}
         {primaryCategory && (
           <>
             <a href={`/category/${primaryCategory.slug}`} class="hover:text-indigo-600">

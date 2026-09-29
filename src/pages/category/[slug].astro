@@ -37,6 +37,7 @@ if (category) {
 
 const allCategories = await getAllCategories();
 const childCategories = category ? allCategories.filter((c) => c.parent === category.id) : [];
+const parentCategory = (category && category.parent > 0) ? allCategories.find((c) => c.id === category.parent) : null;
 const otherCategories = DEFAULT_TOP_CATEGORIES.filter((c) => c.slug !== cleanSlug).slice(0, 6);
 ---
 
@@ -47,12 +48,18 @@ const otherCategories = DEFAULT_TOP_CATEGORIES.filter((c) => c.slug !== cleanSlu
 >
   <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-10">
     <!-- Breadcrumb -->
-    <nav class="flex items-center gap-2 text-xs text-slate-500 mb-6" aria-label="Breadcrumb">
+    <nav class="flex items-center gap-2 text-xs text-slate-500 mb-6 flex-wrap" aria-label="Breadcrumb">
       <a href="/" class="hover:text-indigo-600 transition">Portal Home</a>
       <span>/</span>
       <a href="/blogs" class="hover:text-indigo-600 transition">Blogs</a>
       <span>/</span>
       <span class="text-slate-400">Category</span>
+      {parentCategory && (
+        <>
+          <span>/</span>
+          <a href={`/category/${parentCategory.slug}`} class="hover:text-indigo-600 transition">{parentCategory.name}</a>
+        </>
+      )}
       <span>/</span>
       <span class="text-slate-900 font-semibold">{category ? category.name : 'Not Found'}</span>
     </nav>
