@@ -1,8 +1,9 @@
 import type { APIRoute } from 'astro';
 import { getPosts, getCategories } from '../lib/wp';
+import { SITE_URL } from '../config';
 
-export const GET: APIRoute = async ({ site, url }) => {
-  const siteUrl = (site?.toString() || url.origin || 'https://topnepali.com').replace(/\/+$/, '');
+export const GET: APIRoute = async () => {
+  const siteUrl = SITE_URL;
 
   const [postsResult, categories] = await Promise.all([
     getPosts({ perPage: 100 }),

@@ -142,15 +142,6 @@ if (nodeIndex !== -1) {
 
 const isBuild = process.argv.includes('build');
 
-// Generate build info before build
-if (isBuild) {
-  try {
-    const { spawnSync } = await import('node:child_process');
-    const path = await import('node:path');
-    spawnSync(process.execPath, [path.join(process.cwd(), 'scripts', 'generate-build-info.js')], { stdio: 'inherit' });
-  } catch {}
-}
-
 
 // Graceful fallback for optional satteri native binding on Android/Termux
 try {

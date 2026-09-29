@@ -20,24 +20,12 @@ const {
   canonicalUrl,
 } = Astro.props;
 
-const siteUrl = Astro.site?.toString() || 'https://topnepali.com';
-const canonical = canonicalUrl || new URL(Astro.url.pathname, siteUrl).toString();
+import { SITE_URL, GTM_ID, GA_ID, ADSENSE_ID } from '../config';
 
-const globalCfEnv = typeof globalThis !== 'undefined' ? (globalThis as any).__CF_ENV__ : null;
-const gaId =
-  globalCfEnv?.PUBLIC_GA_ID ||
-  (typeof process !== 'undefined' && process.env?.PUBLIC_GA_ID) ||
-  'G-K2R0GSQE0M';
-
-const adsenseId =
-  globalCfEnv?.PUBLIC_ADSENSE_ID ||
-  (typeof process !== 'undefined' && process.env?.PUBLIC_ADSENSE_ID) ||
-  'ca-pub-5410507143596599';
-
-const gtmId =
-  globalCfEnv?.PUBLIC_GTM_ID ||
-  (typeof process !== 'undefined' && process.env?.PUBLIC_GTM_ID) ||
-  'GTM-MD2NWFJ';
+const canonical = canonicalUrl || new URL(Astro.url.pathname, SITE_URL).toString();
+const gaId = GA_ID;
+const adsenseId = ADSENSE_ID;
+const gtmId = GTM_ID;
 ---
 
 <!doctype html>

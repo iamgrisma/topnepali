@@ -7,17 +7,10 @@ import type {
   PaginationResult
 } from '../types/wp';
 
-// Configurable WordPress endpoint — defaults to wp.topnepali.com
-const DEFAULT_WP_URL = 'https://wp.topnepali.com';
+import { WP_URL } from '../config';
 
 export function getWpBaseUrl(): string {
-  const globalCfEnv = typeof globalThis !== 'undefined' ? (globalThis as any).__CF_ENV__ : null;
-  const envUrl =
-    globalCfEnv?.WORDPRESS_URL ||
-    globalCfEnv?.WP_URL ||
-    (typeof process !== 'undefined' && (process.env?.WORDPRESS_URL || process.env?.WP_URL));
-  const raw = envUrl || DEFAULT_WP_URL;
-  return raw.replace(/\/+$/, '');
+  return WP_URL;
 }
 
 // In-memory cache for SSR performance (24 hours TTL, purged on-demand via /api/revalidate)

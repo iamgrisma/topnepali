@@ -145,10 +145,12 @@ binding = "ASSETS"
 [vars]
 URL = "https://topnepali.com"
 WORDPRESS_URL = "https://wp.topnepali.com"
-REVALIDATE_SECRET = "topnepali_revalidate_secure_token"
+PUBLIC_GTM_ID = "GTM-MD2NWFJ"
+PUBLIC_GA_ID = "G-K2R0GSQE0M"
+PUBLIC_ADSENSE_ID = "ca-pub-5410507143596599"
 `;
   fs.writeFileSync(wranglerTomlFile, tomlContent);
-  console.log('[prepare-pages] Created default wrangler.toml with [vars]');
+  console.log('[prepare-pages] Created default wrangler.toml');
 }
 
 console.log('[prepare-pages] Cloudflare Pages/Worker bundle preparation complete!');

@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getPosts, getSiteInfo } from '../lib/wp';
+import { SITE_URL } from '../config';
 
 function escapeXml(unsafe: string): string {
   return unsafe
@@ -10,8 +11,8 @@ function escapeXml(unsafe: string): string {
     .replace(/'/g, '&apos;');
 }
 
-export const GET: APIRoute = async ({ site, url }) => {
-  const siteUrl = (site?.toString() || url.origin || 'https://topnepali.com').replace(/\/+$/, '');
+export const GET: APIRoute = async () => {
+  const siteUrl = SITE_URL;
   const [siteInfo, postsResult] = await Promise.all([
     getSiteInfo(),
     getPosts({ perPage: 20 }),

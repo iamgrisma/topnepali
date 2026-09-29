@@ -1,21 +1,15 @@
 import type { APIRoute } from 'astro';
 import { clearWpCache } from '../../lib/wp';
+import { SITE_URL, REVALIDATE_SECRET } from '../../config';
 
 export const POST: APIRoute = async ({ request, url }) => {
   try {
     // 1. Authenticate webhook request
     const authHeader = request.headers.get('x-revalidate-secret') || request.headers.get('authorization');
     const secretFromQuery = url.searchParams.get('secret');
-    const globalCfEnv = typeof globalThis !== 'undefined' ? (globalThis as any).__CF_ENV__ : null;
-    const configuredSecret =
-      globalCfEnv?.REVALIDATE_SECRET ||
-      process.env.REVALIDATE_SECRET ||
-      process.env.INTERNAL_API_SECRET ||
-      'topnepali_revalidate_secure_token';
-
     const providedSecret = authHeader?.replace(/^Bearer\s+/i, '') || secretFromQuery;
 
-    if (!providedSecret || providedSecret !== configuredSecret) {
+    if (!providedSecret || providedSecret !== REVALIDATE_SECRET) {
       return new Response(JSON.stringify({ error: 'Unauthorized: Invalid revalidate secret token' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
@@ -39,13 +33,7 @@ export const POST: APIRoute = async ({ request, url }) => {
     const clearedCacheCount = clearWpCache(slug || undefined);
 
     // 4. Determine URLs to purge from Cloudflare Global Edge CDN
-    const siteUrl = (
-      globalCfEnv?.URL ||
-      globalCfEnv?.SITE_URL ||
-      process.env.URL ||
-      process.env.SITE_URL ||
-      'https://topnepali.com'
-    ).replace(/\/+$/, '');
+    const siteUrl = SITE_URL;
     const purgeUrls: string[] = [];
 
     // Always purge the homepage because latest post feeds change on update
