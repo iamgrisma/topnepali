@@ -54,30 +54,31 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
 
     // 7. Dynamic SSR HTML pages:
-    // - Visitor browser: max-age=0, must-revalidate (always contacts edge; instant update on reload)
+    // - Visitor browser: max-age=0, must-revalidate (always contacts edge; instant update upon webhook purge)
     // - Cloudflare Global Edge CDN:
-    //   - Homepage & Archives: s-maxage=120, stale-while-revalidate=600 (instant edge hits, self-heals within 2 mins)
-    //   - Single Posts / Pages: s-maxage=300, stale-while-revalidate=1800
-    //   Ensures sub-15ms TTFB worldwide while guaranteeing that new/edited posts automatically
-    //   appear globally within 2 minutes EVEN IF Cloudflare API tokens are omitted.
+    //   - Search: max-age=300, stale-while-revalidate=600 (absorbs search traffic spikes)
+    //   - Homepage, Archives & Feeds: max-age=604800, stale-while-revalidate=86400 (7 days edge cache, purged on-demand via /api/revalidate)
+    //   - Single Posts & Pages: max-age=604800, stale-while-revalidate=86400 (sub-15ms edge hits worldwide)
     response.headers.set('Vary', 'Accept-Encoding');
     if (pathname === '/search' || url.searchParams.has('q') || url.searchParams.has('s')) {
-      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=60, stale-while-revalidate=300');
-      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=60, stale-while-revalidate=300');
+      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=300, stale-while-revalidate=600');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=300, stale-while-revalidate=600');
     } else if (
       pathname === '/' ||
       pathname === '/blogs' ||
       pathname === '/blogs/' ||
+      pathname === '/blog' ||
+      pathname === '/blog/' ||
       pathname === '/rss.xml' ||
       pathname.startsWith('/category/') ||
       pathname.startsWith('/tag/')
     ) {
-      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=120, stale-while-revalidate=600');
-      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=120, stale-while-revalidate=600');
+      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=604800, stale-while-revalidate=86400');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=604800, stale-while-revalidate=86400');
     } else {
       // Single post or single page
-      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=300, stale-while-revalidate=1800');
-      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=300, stale-while-revalidate=1800');
+      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=604800, stale-while-revalidate=86400');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=604800, stale-while-revalidate=86400');
     }
 
     // Standard modern security headers

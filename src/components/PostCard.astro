@@ -34,6 +34,7 @@ const excerpt = stripHtml(post.excerpt?.rendered || '');
         alt={featuredImage.alt}
         class="card-img"
         loading={featured ? 'eager' : 'lazy'}
+        fetchpriority={featured ? 'high' : 'auto'}
         decoding="async"
       />
     </a>

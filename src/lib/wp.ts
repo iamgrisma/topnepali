@@ -148,7 +148,7 @@ export async function getPosts(options: GetPostsOptions = {}): Promise<Paginatio
   if (fields) {
     params.set('_fields', fields);
   } else {
-    params.set('_fields', 'id,date,modified,slug,status,type,link,title,content,excerpt,featured_media,categories,tags,reading_time,_links,_embedded');
+    params.set('_fields', 'id,date,modified,slug,status,type,link,title,excerpt,featured_media,categories,tags,reading_time,_links,_embedded');
   }
 
   if (category) {

@@ -187,6 +187,7 @@ const currentUrl = Astro.url.href;
     authorName={author?.name}
     section={primaryCategory?.name}
     robots={robots}
+    preloadImage={featuredImg?.url}
   >
     <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-8">
       <!-- Breadcrumb Navigation -->
@@ -284,6 +285,8 @@ const currentUrl = Astro.url.href;
                 alt={featuredImg.alt}
                 class="w-full h-auto max-h-[480px] object-cover mx-auto"
                 loading="eager"
+                fetchpriority="high"
+                decoding="async"
               />
               {featuredImg.alt && featuredImg.alt !== title && (
                 <figcaption class="p-2 text-center text-xs text-slate-400">

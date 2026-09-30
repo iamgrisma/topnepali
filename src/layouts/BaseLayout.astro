@@ -17,6 +17,7 @@ interface Props {
   authorName?: string;
   section?: string;
   robots?: string | null;
+  preloadImage?: string;
 }
 
 const {
@@ -32,6 +33,7 @@ const {
   authorName,
   section,
   robots,
+  preloadImage,
 } = Astro.props;
 
 import { SITE_URL, GTM_ID, GA_ID, ADSENSE_ID } from '../config';
@@ -144,9 +146,17 @@ const gtmId = GTM_ID;
     <link rel="icon" href="https://objects.topnepali.com/wp-content/uploads/2026/09/cropped-Top-Nepali-Logo-192x192.png" sizes="192x192" />
     <link rel="apple-touch-icon" href="https://objects.topnepali.com/wp-content/uploads/2026/09/cropped-Top-Nepali-Logo-180x180.png" />
 
-    <!-- Preconnect -->
+    <!-- Preload Critical LCP Image -->
+    {preloadImage && (
+      <link rel="preload" as="image" href={preloadImage} fetchpriority="high" />
+    )}
+
+    <!-- Preconnect & DNS-Prefetch -->
+    <link rel="dns-prefetch" href="https://objects.topnepali.com" />
     <link rel="preconnect" href="https://objects.topnepali.com" crossorigin />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
     <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
+    <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
     <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin />
 
     <!-- Color Scheme & Light Theme -->
@@ -169,7 +179,7 @@ const gtmId = GTM_ID;
     {adsenseId && (
       <script
         is:inline
-        async
+        defer
         crossorigin="anonymous"
         src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseId}`}
       ></script>

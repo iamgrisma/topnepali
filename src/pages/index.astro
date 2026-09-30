@@ -10,6 +10,7 @@ const siteInfo = getSiteInfo();
 const postsResult = await getPosts({ perPage: 6 });
 const latestPosts = postsResult.data;
 const leadPost = latestPosts[0] || null;
+const leadImg = leadPost ? getPostFeaturedImage(leadPost) : null;
 const secondaryPosts = latestPosts.slice(1, 3);
 const tertiaryPosts = latestPosts.slice(3, 6);
 
@@ -108,6 +109,7 @@ const knowledgeHubs = [
   title={`${siteInfo.name} — The Integrated Mother Portal for Nepali Knowledge, Tools & Civic Intelligence`}
   description="Nepal's central digital portal integrating educational exam routines, career vacancies, open civic archives, typography, and privacy-first web utilities."
   canonicalUrl="https://topnepali.com"
+  preloadImage={leadImg?.url}
 >
   <!-- Hero Section: The Mother Portal Gateway -->
   <section class="portal-hero border-b border-slate-200 bg-linear-to-b from-slate-50 via-white to-slate-50/50 py-12 sm:py-16 lg:py-20">
@@ -344,19 +346,18 @@ const knowledgeHubs = [
     <!-- Lead Spotlight Post -->
     {leadPost && (
       <article class="mb-8 p-6 sm:p-8 rounded-2xl bg-white border border-slate-200 hover:border-indigo-400 transition shadow-xs flex flex-col lg:flex-row gap-6 items-center">
-        {(() => {
-          const leadImg = getPostFeaturedImage(leadPost);
-          return leadImg ? (
-            <a href={`/${leadPost.slug}`} class="w-full lg:w-1/2 aspect-video overflow-hidden rounded-xl bg-slate-100 shrink-0">
-              <img
-                src={leadImg.url}
-                alt={leadImg.alt}
-                class="w-full h-full object-cover hover:scale-105 transition duration-300"
-                loading="eager"
-              />
-            </a>
-          ) : null;
-        })()}
+        {leadImg && (
+          <a href={`/${leadPost.slug}`} class="w-full lg:w-1/2 aspect-video overflow-hidden rounded-xl bg-slate-100 shrink-0">
+            <img
+              src={leadImg.url}
+              alt={leadImg.alt}
+              class="w-full h-full object-cover hover:scale-105 transition duration-300"
+              loading="eager"
+              fetchpriority="high"
+              decoding="async"
+            />
+          </a>
+        )}
         <div class="flex-1">
           <div class="flex items-center gap-2 text-xs text-slate-400 mb-3">
             <span class="font-bold uppercase tracking-wider text-indigo-600">Featured Dispatch</span>

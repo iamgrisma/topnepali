@@ -13,6 +13,10 @@ export default defineConfig({
   security: {
     checkOrigin: false,
   },
+  prefetch: {
+    prefetchAll: true,
+    defaultStrategy: 'hover',
+  },
   adapter: isCloudflare ? cloudflare({ imageService: 'passthrough' }) : node({ mode: 'standalone' }),
   server: {
     host: '0.0.0.0',
