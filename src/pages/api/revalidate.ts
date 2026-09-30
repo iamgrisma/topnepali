@@ -196,21 +196,34 @@ export const POST: APIRoute = async (context) => {
         }
       }
 
-      try {
-        const warmResults = await Promise.allSettled(
-          warmTargets.map((wUrl) =>
-            fetch(wUrl, {
+      const warmPromise = Promise.allSettled(
+        warmTargets.map(async (wUrl) => {
+          try {
+            const res = await fetch(wUrl, {
               headers: {
-                'User-Agent': 'TopNepali-Proactive-Warmer/1.0',
-                'Accept': 'text/html,application/xhtml+xml',
-                'Cache-Control': 'no-cache',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 (TopNepali-Warmer)',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
               },
-            }).then(r => r.text())
-          )
-        );
-        warmedUrls = warmTargets.filter((_, idx) => warmResults[idx].status === 'fulfilled');
-      } catch (warmErr) {
-        console.warn('[revalidate] proactive cache warming warning:', warmErr);
+            });
+            await res.text();
+            return wUrl;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const runtime = (context.locals as any)?.runtime;
+      if (runtime?.ctx?.waitUntil) {
+        runtime.ctx.waitUntil(warmPromise);
+        warmedUrls = warmTargets;
+      } else {
+        try {
+          const warmResults = await warmPromise;
+          warmedUrls = warmTargets.filter((_, idx) => (warmResults[idx] as any).status === 'fulfilled');
+        } catch (warmErr) {
+          console.warn('[revalidate] proactive cache warming warning:', warmErr);
+        }
       }
     }
 

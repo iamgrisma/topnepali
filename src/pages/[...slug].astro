@@ -39,28 +39,32 @@ const KNOWN_PAGES = new Set([
 
 const isKnownPage = KNOWN_PAGES.has(cleanSlug.toLowerCase());
 
-const [rmRedirect, initialContent] = await Promise.all([
-  getRankMathRedirection(cleanSlug),
-  isKnownPage ? getPageBySlug(cleanSlug) : getPostBySlug(cleanSlug),
-]);
+let post: WPPost | null = null;
+let page: WPPage | null = null;
 
-let post = isKnownPage ? null : initialContent;
-let page = isKnownPage ? initialContent : null;
-
-if (!post && !page && !isKnownPage) {
+if (isKnownPage) {
   page = await getPageBySlug(cleanSlug);
+} else {
+  post = await getPostBySlug(cleanSlug);
+  if (!post) {
+    page = await getPageBySlug(cleanSlug);
+  }
 }
 
 // In-memory alias / redirect rewrite: If Rank Math configured a redirection, fetch target in-memory with zero HTTP redirect hops
-const redirectTarget = rmRedirect?.redirect_url || (post || page)?.seo?.redirect_url;
-if ((!post && !page) && redirectTarget) {
-  const cleanTargetSlug = redirectTarget
-    .replace(/^https?:\/\/(?:wp\.)?topnepali\.com/i, '')
-    .replace(/^\/+|\/+$/g, '');
-  if (cleanTargetSlug && cleanTargetSlug !== cleanSlug) {
-    post = await getPostBySlug(cleanTargetSlug);
-    if (!post) {
-      page = await getPageBySlug(cleanTargetSlug);
+let redirectTarget = (post || page)?.seo?.redirect_url;
+if (!post && !page) {
+  const rmRedirect = await getRankMathRedirection(cleanSlug);
+  redirectTarget = rmRedirect?.redirect_url;
+  if (redirectTarget) {
+    const cleanTargetSlug = redirectTarget
+      .replace(/^https?:\/\/(?:wp\.)?topnepali\.com/i, '')
+      .replace(/^\/+|\/+$/g, '');
+    if (cleanTargetSlug && cleanTargetSlug !== cleanSlug) {
+      post = await getPostBySlug(cleanTargetSlug);
+      if (!post) {
+        page = await getPageBySlug(cleanTargetSlug);
+      }
     }
   }
 }

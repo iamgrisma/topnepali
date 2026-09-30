@@ -19,7 +19,7 @@ interface CacheEntry<T> {
   timestamp: number;
 }
 const cache = new Map<string, CacheEntry<any>>();
-const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes (deduplicates concurrent SSR renders without trapping stale data)
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes (purged on-demand via /api/revalidate)
 
 export function clearWpCache(pattern?: string): number {
   if (!pattern || pattern === 'all') {
@@ -47,7 +47,7 @@ export function clearWpCache(pattern?: string): number {
 async function fetchWithCache<T>(
   url: string,
   headersInit?: Record<string, string>,
-  cfTtl: number = 60
+  cfTtl: number = 300
 ): Promise<{ data: T; headers: Headers }> {
   const now = Date.now();
   const cached = cache.get(url);
@@ -219,7 +219,7 @@ export async function getPostBySlug(slug: string): Promise<WPPost | null> {
   const base = getWpBaseUrl();
   const url = `${base}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed=1`;
   try {
-    const { data } = await fetchWithCache<WPPost[]>(url);
+    const { data } = await fetchWithCache<WPPost[]>(url, undefined, 3600);
     if (Array.isArray(data) && data.length > 0) {
       return data[0];
     }
@@ -237,7 +237,7 @@ export async function getPageBySlug(slug: string): Promise<WPPage | null> {
   const base = getWpBaseUrl();
   const url = `${base}/wp-json/wp/v2/pages?slug=${encodeURIComponent(slug)}&_embed=1`;
   try {
-    const { data } = await fetchWithCache<WPPage[]>(url);
+    const { data } = await fetchWithCache<WPPage[]>(url, undefined, 3600);
     if (Array.isArray(data) && data.length > 0) {
       return data[0];
     }
