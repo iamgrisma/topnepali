@@ -3,7 +3,7 @@
  * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
  * Description: Enterprise Headless WordPress engine for Astro SSR & Cloudflare Edge. Provides automatic granular cache invalidation, admin bar purge controls, native WordPress core zip updates, Rank Math SEO bridge, and subdomain protection.
- * Version: 1.5.2
+ * Version: 1.5.3
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.5.2';
+    const VERSION = '1.5.3';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
     const OPTION_SECRET = 'topnepali_headless_secret';
@@ -45,16 +45,19 @@ class TopNepali_Headless_Plugin {
         add_action('update_option_blogname', array($this, 'on_site_info_change'));
         add_action('update_option_blogdescription', array($this, 'on_site_info_change'));
 
+        // Native WordPress Core Plugin Update Pipeline (Registered globally so background cron auto-updates also fire)
+        add_filter('pre_set_site_transient_update_plugins', array($this, 'check_for_update'));
+        add_filter('site_transient_update_plugins', array($this, 'check_for_update'));
+        add_filter('plugins_api', array($this, 'plugin_popup_info'), 20, 3);
+        add_filter('auto_update_plugin', array($this, 'filter_auto_update_plugin'), 10, 2);
+        add_filter('update_plugins_topnepali.com', array($this, 'filter_update_plugins_host'), 10, 4);
+
         // Admin & Dashboard controls
         if (is_admin()) {
             add_action('admin_menu', array($this, 'register_admin_menu'));
             add_action('admin_init', array($this, 'register_settings'));
             add_action('admin_init', array($this, 'handle_admin_cache_actions'));
-
-            // Native WordPress Core Plugin Update Pipeline
-            add_filter('pre_set_site_transient_update_plugins', array($this, 'check_for_update'));
-            add_filter('plugins_api', array($this, 'plugin_popup_info'), 20, 3);
-            add_filter('auto_update_plugin', array($this, 'filter_auto_update_plugin'), 10, 2);
+            add_filter('plugin_auto_update_setting_html', array($this, 'filter_plugin_auto_update_html'), 10, 3);
         }
 
         // Admin Bar Quick Purge Buttons
@@ -1108,11 +1111,26 @@ class TopNepali_Headless_Plugin {
 
         // Check for updates form trigger
         $update_check_msg = null;
+        $update_available = false;
+        $update_version = null;
+        $update_url = null;
         if (isset($_POST['topnepali_check_updates']) && check_admin_referer('topnepali_update_action', 'topnepali_update_nonce')) {
             $remote_info = $this->get_remote_info(true);
+
+            // Invalidate WordPress core update transient to register the update across WP immediately
+            delete_site_transient('update_plugins');
+            wp_clean_plugins_cache();
+
             if (!empty($remote_info['version'])) {
                 if (version_compare(self::VERSION, $remote_info['version'], '<')) {
-                    $update_check_msg = 'A newer version (v' . esc_html($remote_info['version']) . ') is available! Please update via the WordPress Plugins screen.';
+                    $update_available = true;
+                    $update_version = $remote_info['version'];
+                    $plugin_file = plugin_basename(__FILE__);
+                    $update_url = wp_nonce_url(
+                        self_admin_url('update.php?action=upgrade-plugin&plugin=' . urlencode($plugin_file)),
+                        'upgrade-plugin_' . $plugin_file
+                    );
+                    $update_check_msg = 'A newer version (v' . esc_html($remote_info['version']) . ') is available!';
                 } else {
                     $update_check_msg = 'Your TopNepali Headless plugin is up to date (v' . esc_html(self::VERSION) . ').';
                 }
@@ -1132,8 +1150,20 @@ class TopNepali_Headless_Plugin {
             <?php endif; ?>
 
             <?php if ($update_check_msg): ?>
-                <div class="notice notice-info is-dismissible">
-                    <p><strong>Plugin Updates:</strong> <?php echo esc_html($update_check_msg); ?></p>
+                <div class="notice notice-<?php echo $update_available ? 'warning' : 'info'; ?> is-dismissible" style="padding: 12px 15px;">
+                    <p style="margin: 0 0 <?php echo $update_available ? '10px' : '0'; ?> 0;">
+                        <strong>Plugin Updates:</strong> <?php echo esc_html($update_check_msg); ?>
+                    </p>
+                    <?php if ($update_available && $update_url): ?>
+                        <p style="margin: 0;">
+                            <a href="<?php echo esc_url($update_url); ?>" class="button button-primary" style="margin-right: 8px;">
+                                Update to v<?php echo esc_html($update_version); ?> Now
+                            </a>
+                            <a href="<?php echo esc_url(admin_url('plugins.php')); ?>" class="button button-secondary">
+                                View on Plugins Screen
+                            </a>
+                        </p>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
 
@@ -1318,6 +1348,7 @@ class TopNepali_Headless_Plugin {
         $item->tested       = !empty($remote_info['tested']) ? $remote_info['tested'] : '6.7';
         $item->requires     = !empty($remote_info['requires']) ? $remote_info['requires'] : '5.6';
         $item->requires_php = !empty($remote_info['requires_php']) ? $remote_info['requires_php'] : '7.4';
+        $item->autoupdate   = (bool) get_option(self::OPTION_AUTO_UPDATE, '1');
 
         if (version_compare(self::VERSION, $remote_info['version'], '<')) {
             $transient->response[$plugin_file] = $item;
@@ -1386,6 +1417,51 @@ class TopNepali_Headless_Plugin {
         $plugin_file = plugin_basename(__FILE__);
         if (!empty($item->plugin) && ($item->plugin === $plugin_file || strpos($item->plugin, 'headless') !== false)) {
             return true;
+        }
+
+        return $update;
+    }
+
+    /**
+     * Render native auto-update status in the WordPress Plugins screen table
+     */
+    public function filter_plugin_auto_update_html($html, $plugin_file, $plugin_data) {
+        if ($plugin_file === plugin_basename(__FILE__)) {
+            $auto_update = get_option(self::OPTION_AUTO_UPDATE, '1');
+            $settings_url = admin_url('options-general.php?page=topnepali-headless');
+            if ($auto_update === '1' || $auto_update === 1 || $auto_update === true) {
+                return '<span class="label" style="color:#007017;font-weight:600;">Auto-updates enabled</span><br><a href="' . esc_url($settings_url) . '" style="font-size:11px;color:#555;">Managed in Headless Settings</a>';
+            } else {
+                return '<span class="label" style="color:#777;">Auto-updates disabled</span><br><a href="' . esc_url($settings_url) . '" style="font-size:11px;color:#2271b1;">Enable in Headless Settings</a>';
+            }
+        }
+        return $html;
+    }
+
+    /**
+     * Support WordPress 5.8+ Update URI hostname filter
+     */
+    public function filter_update_plugins_host($update, $plugin_data, $plugin_file, $locales = array()) {
+        if ($plugin_file !== plugin_basename(__FILE__)) {
+            return $update;
+        }
+
+        $remote_info = $this->get_remote_info();
+        if (empty($remote_info) || empty($remote_info['version'])) {
+            return $update;
+        }
+
+        if (version_compare(self::VERSION, $remote_info['version'], '<')) {
+            return array(
+                'slug'        => 'topnepali-headless',
+                'version'     => $remote_info['version'],
+                'url'         => !empty($remote_info['homepage']) ? $remote_info['homepage'] : 'https://topnepali.com',
+                'package'     => !empty($remote_info['download_url']) ? $remote_info['download_url'] : '',
+                'tested'      => !empty($remote_info['tested']) ? $remote_info['tested'] : '6.7',
+                'requires'    => !empty($remote_info['requires']) ? $remote_info['requires'] : '5.6',
+                'requires_php'=> !empty($remote_info['requires_php']) ? $remote_info['requires_php'] : '7.4',
+                'autoupdate'  => (bool) get_option(self::OPTION_AUTO_UPDATE, '1'),
+            );
         }
 
         return $update;
