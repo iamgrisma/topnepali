@@ -18,9 +18,9 @@ export const POST: APIRoute = async (context) => {
       if (cf && cf.env) cfEnv = cf.env;
     } catch {}
     try {
-      const runtime = (context.locals as any)?.runtime;
-      if (runtime && runtime.env) {
-        cfEnv = { ...cfEnv, ...runtime.env };
+      const cfEnvObj = (context.locals as any)?.cfEnv;
+      if (cfEnvObj && typeof cfEnvObj === 'object') {
+        cfEnv = { ...cfEnv, ...cfEnvObj };
       }
     } catch {}
     if (!cfEnv || Object.keys(cfEnv).length === 0) {
@@ -213,9 +213,16 @@ export const POST: APIRoute = async (context) => {
         })
       );
 
-      const runtime = (context.locals as any)?.runtime;
-      if (runtime?.ctx?.waitUntil) {
-        runtime.ctx.waitUntil(warmPromise);
+      let waitUntilFn: ((promise: Promise<any>) => void) | null = null;
+      try {
+        const cfCtx = (context.locals as any)?.cfContext;
+        if (typeof cfCtx?.waitUntil === 'function') {
+          waitUntilFn = cfCtx.waitUntil.bind(cfCtx);
+        }
+      } catch {}
+
+      if (waitUntilFn) {
+        waitUntilFn(warmPromise);
         warmedUrls = warmTargets;
       } else {
         try {
