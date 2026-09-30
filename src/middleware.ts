@@ -81,12 +81,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
       pathname.startsWith('/category/') ||
       pathname.startsWith('/tag/')
     ) {
-      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=604800, stale-while-revalidate=86400');
-      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=604800, stale-while-revalidate=86400');
+      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=31536000, stale-while-revalidate=86400');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=31536000, stale-while-revalidate=86400');
     } else {
-      // Single post or single page
-      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=604800, stale-while-revalidate=86400');
-      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=604800, stale-while-revalidate=86400');
+      // Single post or single page — cached at edge for 1 year, purged on-demand via WordPress webhook
+      response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate, s-maxage=31536000, stale-while-revalidate=86400');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'max-age=31536000, stale-while-revalidate=86400');
     }
 
     // Standard modern security headers
