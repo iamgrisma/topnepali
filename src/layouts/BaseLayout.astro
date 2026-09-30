@@ -321,6 +321,41 @@ const gtmId = GTM_ID;
         text-align: center;
         margin-top: 6px;
       }
+
+      /* Responsive Video & Iframe Embeds */
+      .entry-content .wp-block-embed,
+      .entry-content figure.is-type-video {
+        margin: 1.5rem 0;
+        width: 100%;
+        max-width: 100%;
+      }
+
+      .entry-content .wp-block-embed__wrapper,
+      .entry-content .aspect-video {
+        position: relative;
+        width: 100%;
+        max-width: 100%;
+        aspect-ratio: 16 / 9;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        background-color: #0f172a;
+        border: 1px solid #e2e8f0;
+      }
+
+      .entry-content .wp-block-embed iframe,
+      .entry-content .wp-block-embed__wrapper iframe,
+      .entry-content .aspect-video iframe,
+      .entry-content figure iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        border: 0;
+        display: block;
+      }
     </style>
   </head>
 

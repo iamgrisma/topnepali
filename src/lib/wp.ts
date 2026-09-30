@@ -559,10 +559,35 @@ export function optimizeWpHtml(rawHtml: string): string {
     return `<div class="overflow-x-auto my-6 rounded-lg border border-slate-200 shadow-2xs">${match}</div>`;
   });
 
-  // 7. Make <iframe> embeds responsive (YouTube, Vimeo, etc.)
-  html = html.replace(/<iframe\b([\s\S]*?)<\/iframe>/gi, (match) => {
-    if (match.includes('aspect-video')) return match;
-    return `<div class="aspect-video w-full my-6 rounded-lg overflow-hidden border border-slate-200 shadow-2xs">${match}</div>`;
+  // 7. Make <iframe> embeds responsive (YouTube, Vimeo, etc.) with minimal DOM depth
+  // Normalize any existing nested .wp-block-embed__wrapper > .aspect-video wrappers first
+  html = html.replace(
+    /<div class="wp-block-embed__wrapper">\s*<div class="aspect-video[^"]*">\s*(<iframe[\s\S]*?<\/iframe>)\s*<\/div>\s*<\/div>/gi,
+    '<div class="wp-block-embed__wrapper">$1</div>'
+  );
+
+  const formatIframe = (fullIframe: string) => {
+    return fullIframe.replace(/<iframe\b([^>]*?)>/i, (m, attrs) => {
+      const cleanAttrs = attrs
+        .replace(/\s*class="[^"]*"/gi, '')
+        .replace(/\s*width="[^"]*"/gi, '')
+        .replace(/\s*height="[^"]*"/gi, '');
+      return `<iframe${cleanAttrs} class="w-full h-full absolute inset-0 border-0" width="100%" height="100%">`;
+    });
+  };
+
+  // Reuse existing .wp-block-embed__wrapper and avoid duplicate wrapper bloat
+  html = html.replace(
+    /<div class="wp-block-embed__wrapper">\s*(<iframe\b[\s\S]*?<\/iframe>)\s*<\/div>/gi,
+    (match, iframe) => {
+      return `<div class="wp-block-embed__wrapper aspect-video relative w-full my-6 rounded-lg overflow-hidden border border-slate-200 shadow-2xs bg-black">${formatIframe(iframe)}</div>`;
+    }
+  );
+
+  // Wrap any standalone iframes not already wrapped
+  html = html.replace(/<iframe\b[\s\S]*?<\/iframe>/gi, (match) => {
+    if (match.includes('absolute') || match.includes('aspect-video')) return match;
+    return `<div class="aspect-video relative w-full my-6 rounded-lg overflow-hidden border border-slate-200 shadow-2xs bg-black">${formatIframe(match)}</div>`;
   });
 
   // 8. Clean up duplicate line breaks
