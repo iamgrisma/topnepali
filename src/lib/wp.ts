@@ -598,7 +598,12 @@ export function optimizeWpHtml(rawHtml: string): string {
   // 8. Clean up duplicate line breaks
   html = html.replace(/(<br\s*\/?>){3,}/gi, '<br><br>');
 
-  // 9. Ensure all <h2> and <h3> headings have deterministic IDs for Table of Contents jump navigation
+  // 9. Strip legacy WordPress TOC blocks from rendered HTML to avoid duplicates with universal Astro TOC
+  html = html.replace(/<div\b[^>]*class="[^"]*(?:wp-block-rank-math-toc-block|wp-block-uagb-table-of-contents)[^"]*"[\s\S]*?<\/div>\s*<\/div>/gi, '');
+  html = html.replace(/<div\b[^>]*class="[^"]*(?:wp-block-rank-math-toc-block|wp-block-uagb-table-of-contents)[^"]*"[\s\S]*?<\/div>/gi, '');
+  html = html.replace(/<div\b[^>]*id="ez-toc-container"[^>]*>[\s\S]*?<\/div>/gi, '');
+
+  // 10. Ensure all <h2> and <h3> headings have deterministic IDs for Table of Contents jump navigation
   const headingSlugCounts = new Map<string, number>();
   html = html.replace(/<(h[23])\b([^>]*?)>([\s\S]*?)<\/\1>/gi, (match, tag, attrs, content) => {
     // If ID attribute already exists, retain it
@@ -629,6 +634,41 @@ export function optimizeWpHtml(rawHtml: string): string {
   });
 
   return html.trim();
+}
+
+export interface TocHeadingItem {
+  id: string;
+  text: string;
+  level: number;
+}
+
+/**
+ * Extracts all <h2> and <h3> headings with their IDs from optimized HTML
+ */
+export function extractTocHeadings(html: string): TocHeadingItem[] {
+  if (!html) return [];
+  const headings: TocHeadingItem[] = [];
+  const regex = /<(h[23])\b([^>]*?)>([\s\S]*?)<\/\1>/gi;
+  let match;
+  while ((match = regex.exec(html)) !== null) {
+    const tag = match[1].toLowerCase();
+    const attrs = match[2];
+    const content = match[3];
+    const text = content.replace(/<[^>]+>/g, '').trim();
+    if (!text) continue;
+    // Skip self-referential TOC title
+    if (/^table\s*of\s*contents?$/i.test(text)) continue;
+
+    const idMatch = attrs.match(/\bid=["']([^"']+)["']/i);
+    if (idMatch && idMatch[1]) {
+      headings.push({
+        id: idMatch[1],
+        text,
+        level: tag === 'h2' ? 2 : 3,
+      });
+    }
+  }
+  return headings;
 }
 
 /**

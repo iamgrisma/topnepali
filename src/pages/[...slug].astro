@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Sidebar from '../components/Sidebar.astro';
 import EmptyState from '../components/EmptyState.astro';
+import TableOfContents from '../components/TableOfContents.astro';
 import {
   getPostBySlug,
   getPageBySlug,
@@ -17,6 +18,7 @@ import {
   stripHtml,
   decodeHtmlEntities,
   optimizeWpHtml,
+  extractTocHeadings,
   resolveRankMathVariables,
   getAllCategories,
   getRankMathRedirection,
@@ -157,6 +159,9 @@ const [relResult, recentPosts] = await Promise.all([
 const relatedPosts = relResult.data;
 
 const currentUrl = Astro.url.href;
+
+const contentHtml = optimizeWpHtml(item?.content?.rendered || '');
+const tocHeadings = isArticle ? extractTocHeadings(contentHtml) : [];
 ---
 
 {(!post && !page) ? (
@@ -306,7 +311,11 @@ const currentUrl = Astro.url.href;
             </figure>
           )}
 
-          <div class="entry-content mb-8" set:html={optimizeWpHtml(item?.content?.rendered || '')} />
+          {isArticle && tocHeadings.length >= 2 && (
+            <TableOfContents headings={tocHeadings} />
+          )}
+
+          <div class="entry-content mb-8" set:html={contentHtml} />
 
           {tags.length > 0 && (
             <div class="pt-6 border-t border-slate-100 mb-8">
@@ -865,8 +874,61 @@ const currentUrl = Astro.url.href;
         });
       }
 
+      function setupUniversalTableFilters() {
+        document.querySelectorAll('input[data-table-filter], input.live-table-filter').forEach(rawInput => {
+          const input = rawInput as HTMLInputElement;
+          const targetSelector = input.getAttribute('data-table-filter') || input.getAttribute('data-table');
+          if (!targetSelector) return;
+          const table = document.querySelector(targetSelector);
+          if (!table) return;
+
+          const countTargetId = input.getAttribute('data-count-target');
+          const countEl = countTargetId ? document.querySelector(countTargetId) : null;
+          const clearBtnId = input.getAttribute('data-clear-target');
+          const clearBtn = clearBtnId ? document.querySelector(clearBtnId) : null;
+
+          const rows = Array.from(table.querySelectorAll('tbody tr'));
+          const totalRows = rows.length;
+
+          let debounceTimer: ReturnType<typeof setTimeout>;
+          input.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+              const query = input.value.trim().toLowerCase();
+              if (clearBtn) {
+                clearBtn.classList.toggle('hidden', query.length === 0);
+              }
+
+              let visibleCount = 0;
+              rows.forEach(row => {
+                const text = (row.textContent || '').toLowerCase();
+                const matches = query.length === 0 || text.includes(query);
+                (row as HTMLElement).style.display = matches ? '' : 'none';
+                if (matches) visibleCount++;
+              });
+
+              if (countEl) {
+                if (query.length > 0) {
+                  countEl.textContent = `Showing ${visibleCount} of ${totalRows} entries`;
+                } else {
+                  countEl.textContent = `Total: ${totalRows} entries`;
+                }
+              }
+            }, 100);
+          });
+
+          if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+              input.value = '';
+              input.dispatchEvent(new Event('input'));
+              input.focus();
+            });
+          }
+        });
+      }
+
       function setupTocSmoothScroll() {
-        document.querySelectorAll('.entry-content a[href^="#"]').forEach(link => {
+        document.querySelectorAll('.universal-toc a[href^="#"], .entry-content a[href^="#"]').forEach(link => {
           link.addEventListener('click', (e) => {
             const href = link.getAttribute('href');
             if (!href || href === '#') return;
@@ -892,6 +954,7 @@ const currentUrl = Astro.url.href;
       setupPhoneSearch();
       setupDistrictSearch();
       setupSubMetroSearch();
+      setupUniversalTableFilters();
       setupTocSmoothScroll();
       document.addEventListener('astro:page-load', () => {
         setupShare();
@@ -899,6 +962,7 @@ const currentUrl = Astro.url.href;
         setupPhoneSearch();
         setupDistrictSearch();
         setupSubMetroSearch();
+        setupUniversalTableFilters();
         setupTocSmoothScroll();
       });
     </script>

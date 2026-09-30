@@ -1,0 +1,115 @@
+---
+// TableOfContents.astro — Universal, semantic Table of Contents component
+export interface TocHeading {
+  id: string;
+  text: string;
+  level: number; // 2 or 3
+}
+
+interface Props {
+  headings: TocHeading[];
+  title?: string;
+  class?: string;
+}
+
+const { headings, title = 'Table of Contents', class: className = '' } = Astro.props;
+
+// Filter out empty or self-referential headings
+const validHeadings = headings.filter(
+  (h) => h.id && h.text && !/^table\s*of\s*contents?$/i.test(h.text.trim())
+);
+---
+
+{validHeadings.length >= 2 && (
+  <nav
+    class={`universal-toc my-8 rounded-xl border border-slate-200/90 bg-slate-50/70 p-5 shadow-2xs transition-colors ${className}`}
+    aria-label="Table of contents"
+    id="article-table-of-contents"
+  >
+    <div class="toc-header flex items-center justify-between pb-3 border-b border-slate-200/80">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <line x1="3" y1="6" x2="3.01" y2="6"></line>
+          <line x1="3" y1="12" x2="3.01" y2="12"></line>
+          <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+        <span class="text-sm font-semibold text-slate-900 tracking-tight">{title}</span>
+        <span class="text-[11px] font-medium text-slate-500 bg-slate-200/70 px-1.5 py-0.5 rounded-full">
+          {validHeadings.length}
+        </span>
+      </div>
+      <button
+        type="button"
+        id="toc-toggle-btn"
+        class="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-indigo-600 transition-colors cursor-pointer py-1 px-2 rounded hover:bg-slate-200/50"
+        aria-expanded="true"
+        aria-controls="toc-list-content"
+      >
+        <span id="toc-toggle-label">Hide</span>
+        <svg id="toc-toggle-chevron" class="w-3.5 h-3.5 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+      </button>
+    </div>
+
+    <div id="toc-list-content" class="toc-content pt-3">
+      <ol class="toc-list space-y-2 text-sm text-slate-700 list-none p-0 m-0">
+        {validHeadings.map((heading, index) => {
+          const isH3 = heading.level === 3;
+          return (
+            <li class={`toc-item ${isH3 ? 'pl-4 text-xs border-l-2 border-slate-200' : ''}`}>
+              <a
+                href={`#${heading.id}`}
+                class="toc-link group inline-flex items-baseline gap-2 py-0.5 text-slate-700 hover:text-indigo-600 transition-colors leading-relaxed"
+                data-target={heading.id}
+              >
+                {!isH3 && (
+                  <span class="toc-index font-mono text-[11px] text-slate-400 group-hover:text-indigo-500 shrink-0">
+                    {String(index + 1).padStart(2, '0')}.
+                  </span>
+                )}
+                {isH3 && (
+                  <span class="text-slate-300 group-hover:text-indigo-400 shrink-0">&bull;</span>
+                )}
+                <span class="toc-title font-medium">{heading.text}</span>
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  </nav>
+)}
+
+<script>
+  function initTocToggle() {
+    const btn = document.getElementById('toc-toggle-btn');
+    const content = document.getElementById('toc-list-content');
+    const label = document.getElementById('toc-toggle-label');
+    const chevron = document.getElementById('toc-toggle-chevron');
+
+    if (!btn || !content || !label || !chevron) return;
+
+    btn.addEventListener('click', () => {
+      const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+      if (isExpanded) {
+        content.classList.add('hidden');
+        btn.setAttribute('aria-expanded', 'false');
+        label.textContent = 'Show';
+        chevron.classList.add('rotate-180');
+      } else {
+        content.classList.remove('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+        label.textContent = 'Hide';
+        chevron.classList.remove('rotate-180');
+      }
+    });
+  }
+
+  // Run on initial load and navigation
+  initTocToggle();
+  document.addEventListener('astro:page-load', initTocToggle);
+</script>
