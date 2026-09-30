@@ -17,6 +17,10 @@ export default defineConfig({
     prefetchAll: true,
     defaultStrategy: 'hover',
   },
+  compressHTML: true,
+  build: {
+    inlineStylesheets: 'auto',
+  },
   adapter: isCloudflare ? cloudflare({ imageService: 'passthrough' }) : node({ mode: 'standalone' }),
   server: {
     host: '0.0.0.0',
@@ -24,6 +28,10 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      cssMinify: true,
+      minify: 'esbuild',
+    },
     server: {
       watch: {
         usePolling: true,

@@ -23,6 +23,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return response;
     }
 
+    // 2.1 Empty or zero-length responses are never cached
+    const cl = response.headers.get('content-length');
+    if (cl === '0') {
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
+      return response;
+    }
+
     // 3. Webhook & private plugin distribution endpoints (never cache)
     if (pathname.startsWith('/api/revalidate') || pathname.startsWith('/api/headless-plugin')) {
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');

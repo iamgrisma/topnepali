@@ -547,7 +547,7 @@ export function optimizeWpHtml(rawHtml: string): string {
     return hasAlign ? ` style="${hasAlign[0]}"` : '';
   });
 
-  // 5. Optimize <img> tags: ensure loading="lazy" and decoding="async"
+  // 5. Optimize <img> tags: ensure loading="lazy", decoding="async", and explicit dimensions/aspect-ratio to eliminate CLS
   html = html.replace(/<img\b([^>]*?)>/gi, (match, attrs) => {
     let newAttrs = attrs;
     if (!/loading\s*=/i.test(newAttrs)) {
@@ -556,6 +556,21 @@ export function optimizeWpHtml(rawHtml: string): string {
     if (!/decoding\s*=/i.test(newAttrs)) {
       newAttrs += ' decoding="async"';
     }
+
+    const hasWidth = /\bwidth\s*=/i.test(newAttrs);
+    const hasHeight = /\bheight\s*=/i.test(newAttrs);
+    if (!hasWidth || !hasHeight) {
+      // Try to parse dimensions from WordPress image URLs like ...-1200x630.jpg or ...-768x403.png
+      const dimMatch = newAttrs.match(/src=["'][^"']*-(\d{2,4})x(\d{2,4})\.(?:jpe?g|png|webp|avif)/i);
+      if (dimMatch && dimMatch[1] && dimMatch[2]) {
+        if (!hasWidth) newAttrs += ` width="${dimMatch[1]}"`;
+        if (!hasHeight) newAttrs += ` height="${dimMatch[2]}"`;
+      } else if (!/aspect-ratio/i.test(newAttrs)) {
+        // Fallback layout shift guard
+        newAttrs += ' style="aspect-ratio: 16/9; max-width: 100%; height: auto;"';
+      }
+    }
+
     return `<img${newAttrs}>`;
   });
 
