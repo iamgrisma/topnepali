@@ -143,13 +143,17 @@ export const POST: APIRoute = async (context) => {
 
     if (cfZoneId && cfApiToken) {
       try {
+        const purgeBody = (body.purge_everything === true || body.pattern === 'all')
+          ? { purge_everything: true }
+          : { files: purgeUrls };
+
         const cfRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${cfApiToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ files: purgeUrls }),
+          body: JSON.stringify(purgeBody),
         });
         const cfJson: any = await cfRes.json();
         cfApiPurged = Boolean(cfJson?.success);
@@ -201,7 +205,7 @@ export const POST: APIRoute = async (context) => {
                 'Accept': 'text/html,application/xhtml+xml',
                 'Cache-Control': 'no-cache',
               },
-            })
+            }).then(r => r.text())
           )
         );
         warmedUrls = warmTargets.filter((_, idx) => warmResults[idx].status === 'fulfilled');
