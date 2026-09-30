@@ -93,7 +93,7 @@ if (!resolvedSeoTitle || !resolvedSeoTitle.replace(/[\(\)\[\]\-\—\s\|\:\,]/g, 
 
 const rawTitle = decodeHtmlEntities(resolvedSeoTitle || cleanPostTitle);
 let cleanTitle = (rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} — Top Nepali`).replace(/\((\d{4})\)\s*\(\1\)/gi, '($1)');
-const trailingYearMatch = cleanTitle.match(/\s+(\d{4})\s*([—\-\|]\s*Top Nepali)$/i);
+const trailingYearMatch = cleanTitle.match(/\s+(?:\(?(\d{4})\)?)\s*([—\-\|]\s*Top Nepali)$/i);
 if (trailingYearMatch) {
   const year = trailingYearMatch[1];
   const sepAndSite = trailingYearMatch[2];
@@ -104,7 +104,16 @@ if (trailingYearMatch) {
 }
 const title = cleanTitle;
 
-const fallbackExcerpt = item ? stripHtml(item.excerpt?.rendered || item.content?.rendered || '').slice(0, 180) : 'The requested page could not be found.';
+function cleanMetaDesc(text: string, maxLen = 180): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (clean.length <= maxLen) return clean;
+  const sliced = clean.slice(0, maxLen);
+  const lastSpace = sliced.lastIndexOf(' ');
+  return lastSpace > 100 ? sliced.slice(0, lastSpace) : sliced;
+}
+
+const rawExcerpt = item ? stripHtml(item.excerpt?.rendered || item.content?.rendered || '') : 'The requested page could not be found.';
+const fallbackExcerpt = cleanMetaDesc(rawExcerpt, 180);
 const resolvedSeoDesc = resolveRankMathVariables(item?.seo?.description, {
   title: cleanPostTitle,
   excerpt: fallbackExcerpt,
@@ -118,7 +127,8 @@ const isRedundantDesc = !resolvedSeoDesc ||
   resolvedSeoDesc.trim().toLowerCase() === decodeHtmlEntities(cleanPostTitle).trim().toLowerCase() ||
   resolvedSeoDesc.trim().length < 30;
 
-const description = decodeHtmlEntities(isRedundantDesc && fallbackExcerpt ? fallbackExcerpt : (resolvedSeoDesc || fallbackExcerpt));
+const candidateDesc = isRedundantDesc && fallbackExcerpt ? fallbackExcerpt : (resolvedSeoDesc || fallbackExcerpt);
+const description = cleanMetaDesc(decodeHtmlEntities(candidateDesc), 180);
 
 const featuredImg = item ? getPostFeaturedImage(item) : null;
 const rawOgImage = item?.seo?.og_image || featuredImg?.url || 'https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png';
