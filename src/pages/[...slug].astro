@@ -394,8 +394,134 @@ const currentUrl = Astro.url.href;
         });
       }
 
+      function setupPostalSearch() {
+        const input = document.getElementById('postal-code-search-input') as HTMLInputElement | null;
+        const resultsBox = document.getElementById('postal-search-results');
+        const statusEl = document.getElementById('postal-search-status');
+        if (!input || !resultsBox || !statusEl) return;
+
+        interface PostalItem {
+          location: string;
+          district: string;
+          code: string;
+          keywords: string;
+        }
+
+        const items: PostalItem[] = [];
+        const seen = new Set<string>();
+
+        const aliases: PostalItem[] = [
+          { location: 'Kathmandu (GPO Sundhara / New Road / Thamel / Baneshwor / Koteshwor)', district: 'Kathmandu', code: '44600', keywords: 'kathmandu baneshwor thamel new road maitighar tinkune sundhara gpo' },
+          { location: 'Lalitpur (Patan / Jawalakhel / Kupondole / Pulchowk / Sanepa)', district: 'Lalitpur', code: '44700', keywords: 'lalitpur patan jawalakhel kupondole pulchowk sanepa lagankhel' },
+          { location: 'Pokhara (Kaski DPO / Lakeside / Chipledhunga / Mahendrapool)', district: 'Kaski', code: '33700', keywords: 'pokhara kaski lakeside chipledhunga mahendrapool' },
+          { location: 'Bharatpur / Narayangarh (Chitwan DPO)', district: 'Chitwan', code: '44200', keywords: 'bharatpur narayangarh chitwan' },
+          { location: 'Biratnagar (Morang DPO)', district: 'Morang', code: '56600', keywords: 'biratnagar morang' },
+          { location: 'Birgunj (Parsa DPO)', district: 'Parsa', code: '44300', keywords: 'birgunj parsa' },
+          { location: 'Butwal (Rupandehi DPO)', district: 'Rupandehi', code: '32907', keywords: 'butwal rupandehi' },
+          { location: 'Dharan (Sunsari DPO)', district: 'Sunsari', code: '56700', keywords: 'dharan sunsari' },
+          { location: 'Nepalgunj (Banke DPO)', district: 'Banke', code: '21900', keywords: 'nepalgunj banke' },
+          { location: 'Dhangadhi (Kailali DPO)', district: 'Kailali', code: '10900', keywords: 'dhangadhi kailali' }
+        ];
+
+        aliases.forEach(a => {
+          items.push(a);
+          seen.add(`${a.location.toLowerCase()}_${a.code}`);
+        });
+
+        document.querySelectorAll('.entry-content table tbody tr').forEach(row => {
+          const cells = row.querySelectorAll('td');
+          if (cells.length >= 2) {
+            const loc = cells[0].textContent?.trim() || '';
+            const code = cells[1].textContent?.trim() || '';
+            if (/^\d{5}$/.test(code)) {
+              const table = row.closest('table');
+              let heading = table ? table.closest('figure')?.previousElementSibling : null;
+              while (heading && !/^H3$/i.test(heading.tagName)) {
+                heading = heading.previousElementSibling;
+              }
+              const dist = heading ? (heading.textContent || '').replace(/District/i, '').trim() : '';
+              const key = `${loc.toLowerCase()}_${code}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                items.push({
+                  location: loc,
+                  district: dist,
+                  code: code,
+                  keywords: `${loc} ${dist} ${code}`.toLowerCase()
+                });
+              }
+            }
+          }
+        });
+
+        let debounceTimer: ReturnType<typeof setTimeout>;
+        input.addEventListener('input', () => {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            const query = input.value.trim().toLowerCase();
+            if (query.length < 2) {
+              resultsBox.classList.add('hidden');
+              resultsBox.innerHTML = '';
+              statusEl.classList.add('hidden');
+              return;
+            }
+
+            const terms = query.split(/\s+/).filter(Boolean);
+            const matches = items.filter(item => {
+              const text = item.keywords || `${item.location} ${item.district} ${item.code}`.toLowerCase();
+              return terms.every(t => text.includes(t));
+            }).slice(0, 20);
+
+            statusEl.classList.remove('hidden');
+            if (matches.length === 0) {
+              statusEl.textContent = `No postal codes found matching "${input.value}". Try searching by district name.`;
+              resultsBox.classList.add('hidden');
+              resultsBox.innerHTML = '';
+              return;
+            }
+
+            statusEl.textContent = `Found ${matches.length} matching postal code${matches.length > 1 ? 's' : ''}:`;
+            resultsBox.classList.remove('hidden');
+            resultsBox.innerHTML = matches.map(m => `
+              <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 transition shadow-2xs">
+                <div>
+                  <div class="font-bold text-xs sm:text-sm text-slate-900">${m.location}</div>
+                  <div class="text-[11px] text-slate-500">${m.district ? m.district + ' District' : 'Nepal'}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono font-bold text-xs sm:text-sm px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md tracking-wider">${m.code}</span>
+                  <button type="button" class="copy-postal-btn px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg border border-slate-200 transition cursor-pointer" data-code="${m.code}">
+                    Copy
+                  </button>
+                </div>
+              </div>
+            `).join('');
+
+            resultsBox.querySelectorAll('.copy-postal-btn').forEach(btn => {
+              btn.addEventListener('click', async () => {
+                const code = btn.getAttribute('data-code');
+                if (code && navigator.clipboard) {
+                  await navigator.clipboard.writeText(code);
+                  const orig = btn.textContent;
+                  btn.textContent = 'Copied!';
+                  btn.classList.add('bg-green-50', 'text-green-700', 'border-green-200');
+                  setTimeout(() => {
+                    btn.textContent = orig;
+                    btn.classList.remove('bg-green-50', 'text-green-700', 'border-green-200');
+                  }, 2000);
+                }
+              });
+            });
+          }, 150);
+        });
+      }
+
       setupShare();
-      document.addEventListener('astro:page-load', setupShare);
+      setupPostalSearch();
+      document.addEventListener('astro:page-load', () => {
+        setupShare();
+        setupPostalSearch();
+      });
     </script>
   </BaseLayout>
 )}
