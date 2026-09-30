@@ -3,7 +3,7 @@
  * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
  * Description: Enterprise Headless WordPress engine for Astro SSR & Cloudflare Edge. Provides automatic granular cache invalidation, admin bar purge controls, native WordPress core zip updates, Rank Math SEO bridge, and subdomain protection.
- * Version: 1.5.1
+ * Version: 1.5.2
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.5.1';
+    const VERSION = '1.5.2';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
     const OPTION_SECRET = 'topnepali_headless_secret';
@@ -374,6 +374,15 @@ class TopNepali_Headless_Plugin {
             ),
         ));
 
+        // Expose dynamic reading time field in /wp/v2/posts and /wp/v2/pages
+        register_rest_field(array('post', 'page'), 'reading_time', array(
+            'get_callback' => array($this, 'get_reading_time'),
+            'schema'       => array(
+                'description' => 'Estimated reading time calculated server-side from full post content',
+                'type'        => 'string',
+            ),
+        ));
+
         // Enable REST updating for Rank Math Redirection fields
         foreach (array('post', 'page') as $pt) {
             register_post_meta($pt, 'rank_math_redirection_url', array(
@@ -555,6 +564,20 @@ class TopNepali_Headless_Plugin {
         }
 
         return $resolved;
+    }
+
+    /**
+     * Calculate dynamic reading time based on post content word count
+     */
+    public function get_reading_time($post_arr) {
+        $post_id = is_array($post_arr) ? ($post_arr['id'] ?? 0) : $post_arr;
+        if (!$post_id) return '1 min read';
+        $post = get_post($post_id);
+        if (!$post || empty($post->post_content)) return '1 min read';
+        $clean = wp_strip_all_tags(strip_shortcodes($post->post_content));
+        $words = count(preg_split('/\s+/u', trim($clean), -1, PREG_SPLIT_NO_EMPTY));
+        $minutes = max(1, (int) ceil($words / 200));
+        return $minutes . ' min read';
     }
 
     /**

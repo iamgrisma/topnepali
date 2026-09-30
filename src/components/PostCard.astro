@@ -23,7 +23,7 @@ const featuredImage = getPostFeaturedImage(post);
 const author = getPostAuthor(post);
 const categories = getPostCategories(post);
 const primaryCategory = categories[0];
-const readingTime = estimateReadingTime(post.content?.rendered || '');
+const readingTime = estimateReadingTime(post);
 const excerpt = stripHtml(post.excerpt?.rendered || '');
 ---
 

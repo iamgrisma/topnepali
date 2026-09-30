@@ -123,7 +123,7 @@ const canonicalUrl = rawCanonical
   : (item ? `https://topnepali.com/${cleanSlug}` : undefined);
 
 // 5. Reading Time, Dates, Robots & Head
-const readingTime = item ? estimateReadingTime(item.content?.rendered || '') : '';
+const readingTime = item ? estimateReadingTime(item) : '';
 const publishedTime = post?.date;
 const modifiedTime = post?.modified;
 const robots = typeof item?.seo?.robots === 'string' ? item.seo.robots : null;

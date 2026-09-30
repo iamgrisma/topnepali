@@ -148,7 +148,7 @@ export async function getPosts(options: GetPostsOptions = {}): Promise<Paginatio
   if (fields) {
     params.set('_fields', fields);
   } else {
-    params.set('_fields', 'id,date,modified,slug,status,type,link,title,excerpt,featured_media,categories,tags,_links,_embedded');
+    params.set('_fields', 'id,date,modified,slug,status,type,link,title,content,excerpt,featured_media,categories,tags,reading_time,_links,_embedded');
   }
 
   if (category) {
@@ -461,10 +461,18 @@ export function formatDate(dateStr: string): string {
   });
 }
 
-export function estimateReadingTime(content: string): string {
+export function estimateReadingTime(content: string | WPPost | null | undefined): string {
   if (!content) return '1 min read';
-  const clean = content.replace(/<[^>]+>/g, ' ');
+  let text = '';
+  if (typeof content === 'object') {
+    if (content.reading_time) return content.reading_time;
+    text = content.content?.rendered || content.excerpt?.rendered || '';
+  } else {
+    text = String(content);
+  }
+  const clean = text.replace(/<[^>]+>/g, ' ');
   const words = clean.trim().split(/\s+/).filter(Boolean).length;
+  if (words === 0) return '1 min read';
   const minutes = Math.max(1, Math.ceil(words / 200));
   return `${minutes} min read`;
 }

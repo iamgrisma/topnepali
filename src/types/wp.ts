@@ -87,6 +87,7 @@ export interface WPPost {
   _embedded?: WPEmbedded;
   head?: string | null;
   seo?: WPSEO;
+  reading_time?: string;
 }
 
 export interface WPPage {
@@ -104,6 +105,7 @@ export interface WPPage {
   _embedded?: WPEmbedded;
   head?: string | null;
   seo?: WPSEO;
+  reading_time?: string;
 }
 
 export interface WPCategory {
