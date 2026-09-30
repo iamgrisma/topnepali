@@ -598,6 +598,36 @@ export function optimizeWpHtml(rawHtml: string): string {
   // 8. Clean up duplicate line breaks
   html = html.replace(/(<br\s*\/?>){3,}/gi, '<br><br>');
 
+  // 9. Ensure all <h2> and <h3> headings have deterministic IDs for Table of Contents jump navigation
+  const headingSlugCounts = new Map<string, number>();
+  html = html.replace(/<(h[23])\b([^>]*?)>([\s\S]*?)<\/\1>/gi, (match, tag, attrs, content) => {
+    // If ID attribute already exists, retain it
+    if (/\bid=["']/i.test(attrs)) {
+      return match;
+    }
+
+    // Generate slug from text content (stripping nested tags)
+    const text = content.replace(/<[^>]+>/g, '').trim();
+    if (!text) return match;
+
+    let slug = text
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    if (!slug) return match;
+
+    const count = headingSlugCounts.get(slug) || 0;
+    headingSlugCounts.set(slug, count + 1);
+    if (count > 0) {
+      slug = `${slug}-${count + 1}`;
+    }
+
+    return `<${tag}${attrs} id="${slug}">${content}</${tag}>`;
+  });
+
   return html.trim();
 }
 

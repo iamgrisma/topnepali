@@ -773,15 +773,133 @@ const currentUrl = Astro.url.href;
         });
       }
 
+      function setupSubMetroSearch() {
+        const input = document.getElementById('sub-metro-search-input') as HTMLInputElement | null;
+        const resultsBox = document.getElementById('sub-metro-search-results');
+        const statusEl = document.getElementById('sub-metro-search-status');
+        if (!input || !resultsBox || !statusEl) return;
+
+        interface SubMetroItem {
+          name: string;
+          district: string;
+          province: string;
+          area: string;
+          pop: string;
+          wards: string;
+          keywords: string;
+        }
+
+        const items: SubMetroItem[] = [];
+        const seen = new Set<string>();
+
+        document.querySelectorAll('.entry-content table tbody tr').forEach(row => {
+          const cells = row.querySelectorAll('td');
+          if (cells.length >= 6) {
+            const name = cells[1].textContent?.trim() || '';
+            const distProv = cells[2].textContent?.trim() || '';
+            const area = cells[3].textContent?.trim() || '';
+            const pop = cells[4].textContent?.trim() || '';
+            const wards = cells[5].textContent?.trim() || '';
+
+            if (name && /Sub-Metropolitan/i.test(name) && /^\d/.test(area)) {
+              const key = name.toLowerCase();
+              if (!seen.has(key)) {
+                seen.add(key);
+                items.push({
+                  name,
+                  district: distProv,
+                  province: distProv.split('(')[1]?.replace(')', '').trim() || '',
+                  area: area + ' km²',
+                  pop,
+                  wards: wards + ' Wards',
+                  keywords: `${name} ${distProv}`.toLowerCase()
+                });
+              }
+            }
+          }
+        });
+
+        let debounceTimer: ReturnType<typeof setTimeout>;
+        input.addEventListener('input', () => {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            const query = input.value.trim().toLowerCase();
+            if (query.length < 2) {
+              resultsBox.classList.add('hidden');
+              resultsBox.innerHTML = '';
+              statusEl.classList.add('hidden');
+              return;
+            }
+
+            const terms = query.split(/\s+/).filter(Boolean);
+            const matches = items.filter(item => {
+              const text = item.keywords;
+              return terms.every(t => text.includes(t));
+            }).slice(0, 15);
+
+            statusEl.classList.remove('hidden');
+            if (matches.length === 0) {
+              statusEl.textContent = `No sub-metropolitan cities found matching "${input.value}". Try searching by city name, district, or province.`;
+              resultsBox.classList.add('hidden');
+              resultsBox.innerHTML = '';
+              return;
+            }
+
+            statusEl.textContent = `Found ${matches.length} matching sub-metropolitan cit${matches.length > 1 ? 'ies' : 'y'}:`;
+            resultsBox.classList.remove('hidden');
+            resultsBox.innerHTML = matches.map(m => `
+              <div class="p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 transition shadow-2xs">
+                <div class="flex items-center justify-between gap-2">
+                  <div>
+                    <div class="font-bold text-xs sm:text-sm text-slate-900">${m.name}</div>
+                    <div class="text-[11px] text-slate-600 mt-0.5">District &amp; Province: <strong class="text-indigo-700 font-semibold">${m.district}</strong> · <span class="text-slate-500">${m.wards}</span></div>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <div class="text-xs font-bold text-slate-900">${m.pop}</div>
+                    <div class="text-[10px] text-slate-500">${m.area}</div>
+                  </div>
+                </div>
+              </div>
+            `).join('');
+          }, 150);
+        });
+      }
+
+      function setupTocSmoothScroll() {
+        document.querySelectorAll('.entry-content a[href^="#"]').forEach(link => {
+          link.addEventListener('click', (e) => {
+            const href = link.getAttribute('href');
+            if (!href || href === '#') return;
+            const targetId = href.slice(1);
+            let target = document.getElementById(targetId);
+            if (!target) {
+              document.querySelectorAll('.entry-content h2, .entry-content h3').forEach(heading => {
+                const slug = heading.textContent?.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+                if (slug === targetId) target = heading as HTMLElement;
+              });
+            }
+            if (target) {
+              e.preventDefault();
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              history.pushState(null, '', href);
+            }
+          });
+        });
+      }
+
       setupShare();
       setupPostalSearch();
       setupPhoneSearch();
       setupDistrictSearch();
+      setupSubMetroSearch();
+      setupTocSmoothScroll();
       document.addEventListener('astro:page-load', () => {
         setupShare();
         setupPostalSearch();
         setupPhoneSearch();
         setupDistrictSearch();
+        setupSubMetroSearch();
+        setupTocSmoothScroll();
       });
     </script>
   </BaseLayout>

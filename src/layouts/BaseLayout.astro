@@ -366,6 +366,75 @@ const gtmId = GTM_ID;
         border: 0;
         display: block;
       }
+
+      /* Heading scroll margin to prevent sticky header overlap */
+      .entry-content h2,
+      .entry-content h3,
+      .entry-content h4 {
+        scroll-margin-top: 5rem;
+      }
+
+      /* Universal Table of Contents Styling (Rank Math, UAGB, Easy TOC) */
+      .entry-content .wp-block-uagb-table-of-contents,
+      .entry-content .wp-block-rank-math-toc-block,
+      .entry-content #ez-toc-container,
+      .entry-content .table-of-contents,
+      .entry-content .toc-container {
+        background-color: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 1rem !important;
+        padding: 1.25rem 1.5rem !important;
+        margin: 1.75rem 0 !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+      }
+
+      .entry-content .wp-block-uagb-table-of-contents .uagb-toc__title,
+      .entry-content .wp-block-rank-math-toc-block h2,
+      .entry-content #ez-toc-container .ez-toc-title {
+        font-size: 1.05rem !important;
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        margin-top: 0 !important;
+        margin-bottom: 0.75rem !important;
+        padding-bottom: 0.5rem !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .entry-content .wp-block-uagb-table-of-contents ol,
+      .entry-content .wp-block-rank-math-toc-block ul,
+      .entry-content #ez-toc-container ul {
+        margin: 0 !important;
+        padding-left: 1.25rem !important;
+        list-style-type: decimal !important;
+      }
+
+      .entry-content .wp-block-uagb-table-of-contents li,
+      .entry-content .wp-block-rank-math-toc-block li,
+      .entry-content #ez-toc-container li {
+        margin-bottom: 0.4rem !important;
+        font-size: 0.875rem !important;
+        line-height: 1.5 !important;
+        color: #334155 !important;
+      }
+
+      .entry-content .wp-block-uagb-table-of-contents a,
+      .entry-content .wp-block-rank-math-toc-block a,
+      .entry-content #ez-toc-container a {
+        color: #3730a3 !important;
+        text-decoration: none !important;
+        font-weight: 500 !important;
+        transition: color 0.15s ease;
+      }
+
+      .entry-content .wp-block-uagb-table-of-contents a:hover,
+      .entry-content .wp-block-rank-math-toc-block a:hover,
+      .entry-content #ez-toc-container a:hover {
+        color: #1e1b4b !important;
+        text-decoration: underline !important;
+      }
     </style>
   </head>
 
