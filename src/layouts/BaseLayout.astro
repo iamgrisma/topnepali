@@ -36,12 +36,12 @@ const {
   preloadImage,
 } = Astro.props;
 
-import { SITE_URL, GTM_ID, GA_ID, ADSENSE_ID } from '../config';
+import { SITE_URL, GA_ID, ADSENSE_ID, CLARITY_ID } from '../config';
 
 const canonical = canonicalUrl || canonicalProp || new URL(Astro.url.pathname, SITE_URL).toString();
 const gaId = GA_ID;
 const adsenseId = ADSENSE_ID;
-const gtmId = GTM_ID;
+const clarityId = CLARITY_ID;
 ---
 
 <!doctype html>
@@ -154,13 +154,25 @@ const gtmId = GTM_ID;
     <!-- Preconnect & DNS-Prefetch -->
     <link rel="dns-prefetch" href="https://objects.topnepali.com" />
     <link rel="preconnect" href="https://objects.topnepali.com" crossorigin />
-    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
     <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
     <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
+    <link rel="dns-prefetch" href="https://www.clarity.ms" />
+    <link rel="preconnect" href="https://www.clarity.ms" crossorigin />
 
     <!-- Color Scheme & Light Theme -->
     <meta name="color-scheme" content="light" />
+
+    <!-- Google AdSense -->
+    {adsenseId && (
+      <script
+        is:inline
+        defer
+        crossorigin="anonymous"
+        src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseId}`}
+      ></script>
+    )}
 
     <!-- Google Analytics (GA4) -->
     {gaId && (
@@ -175,24 +187,14 @@ const gtmId = GTM_ID;
       </>
     )}
 
-    <!-- Google AdSense -->
-    {adsenseId && (
-      <script
-        is:inline
-        defer
-        crossorigin="anonymous"
-        src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseId}`}
-      ></script>
-    )}
-
-    <!-- Google Tag Manager (Optional) -->
-    {gtmId && (
-      <script is:inline define:vars={{ gtmId }}>
-        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-        })(window,document,'script','dataLayer',gtmId);
+    <!-- Microsoft Clarity -->
+    {clarityId && (
+      <script is:inline define:vars={{ clarityId }}>
+        (function(c,l,a,r,i,t,y){
+          c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+          t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+          y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window, document, "clarity", "script", clarityId);
       </script>
     )}
 

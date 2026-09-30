@@ -12,8 +12,8 @@ const rawWpUrl = env.WORDPRESS_URL || env.WP_URL;
 // Staged / migrated WordPress REST API backend at wp.topnepali.com
 export const WP_URL: string = (rawWpUrl || 'https://wp.topnepali.com').replace(/\/+$/, '');
 
-export const GTM_ID: string = env.PUBLIC_GTM_ID || 'GTM-MD2NWFJ';
 export const GA_ID: string = env.PUBLIC_GA_ID || 'G-K2R0GSQE0M';
 export const ADSENSE_ID: string = env.PUBLIC_ADSENSE_ID || 'ca-pub-5410507143596599';
+export const CLARITY_ID: string = env.PUBLIC_CLARITY_ID || '7n9ehw4x5h';
 export const REVALIDATE_SECRET: string = env.REVALIDATE_SECRET || 'topnepali_revalidate_secure_token';
 export const POSTS_PER_PAGE: number = parseInt(env.POSTS_PER_PAGE || '10', 10) || 10;
