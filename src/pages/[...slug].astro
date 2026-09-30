@@ -535,11 +535,147 @@ const currentUrl = Astro.url.href;
         });
       }
 
+      function setupPhoneSearch() {
+        const input = document.getElementById('phone-code-search-input') as HTMLInputElement | null;
+        const resultsBox = document.getElementById('phone-search-results');
+        const statusEl = document.getElementById('phone-search-status');
+        if (!input || !resultsBox || !statusEl) return;
+
+        interface PhoneItem {
+          title: string;
+          subtitle: string;
+          code: string;
+          intl?: string;
+          keywords: string;
+        }
+
+        const items: PhoneItem[] = [];
+        const seen = new Set<string>();
+
+        const aliases: PhoneItem[] = [
+          { title: 'Kathmandu (Valley Central / Thamel / Baneshwor)', subtitle: 'Bagmati Province (STD)', code: '01', intl: '+977 1', keywords: 'kathmandu baneshwor thamel new road maitighar gpo 01' },
+          { title: 'Lalitpur (Patan / Jawalakhel / Pulchowk / Kupondole)', subtitle: 'Bagmati Province (STD)', code: '01', intl: '+977 1', keywords: 'lalitpur patan jawalakhel kupondole pulchowk 01' },
+          { title: 'Bhaktapur (Durbar Square / Suryabinayak / Thimi)', subtitle: 'Bagmati Province (STD)', code: '01', intl: '+977 1', keywords: 'bhaktapur thimi suryabinayak 01' },
+          { title: 'Pokhara (Lakeside / Lekhnath / Chipledhunga)', subtitle: 'Gandaki Province (STD)', code: '061', intl: '+977 61', keywords: 'pokhara kaski lakeside chipledhunga 061' },
+          { title: 'Biratnagar', subtitle: 'Koshi Province (STD)', code: '021', intl: '+977 21', keywords: 'biratnagar morang 021' },
+          { title: 'Dharan / Itahari', subtitle: 'Koshi Province (STD)', code: '025', intl: '+977 25', keywords: 'dharan itahari sunsari inaruwa 025' },
+          { title: 'Bharatpur / Narayangarh', subtitle: 'Bagmati Province (STD)', code: '056', intl: '+977 56', keywords: 'bharatpur narayangarh chitwan 056' },
+          { title: 'Birgunj', subtitle: 'Madhesh Province (STD)', code: '051', intl: '+977 51', keywords: 'birgunj parsa 051' },
+          { title: 'Butwal / Bhairahawa', subtitle: 'Lumbini Province (STD)', code: '071', intl: '+977 71', keywords: 'butwal bhairahawa rupandehi 071' },
+          { title: 'Nepalgunj / Kohalpur', subtitle: 'Lumbini Province (STD)', code: '081', intl: '+977 81', keywords: 'nepalgunj kohalpur banke 081' },
+          { title: 'Dhangadhi / Tikapur', subtitle: 'Sudurpaschim Province (STD)', code: '091', intl: '+977 91', keywords: 'dhangadhi tikapur kailali 091' },
+          { title: 'Janakpurdham', subtitle: 'Madhesh Province (STD)', code: '041', intl: '+977 41', keywords: 'janakpur dhanusha 041' },
+          { title: 'Hetauda', subtitle: 'Bagmati Province (STD)', code: '057', intl: '+977 57', keywords: 'hetauda makwanpur 057' },
+          { title: 'Nepal Telecom (NTC / Namaste Mobile)', subtitle: 'Prepaid GSM Series', code: '984, 986, 976', intl: '+977 984...', keywords: 'ntc namaste nepal telecom prepaid mobile gsm 984 986 976' },
+          { title: 'Nepal Telecom (NTC Postpaid)', subtitle: 'Postpaid GSM Series', code: '985', intl: '+977 985...', keywords: 'ntc postpaid namaste 985' },
+          { title: 'Ncell Axiata Mobile', subtitle: 'Prepaid & Postpaid GSM', code: '980, 981, 982', intl: '+977 980...', keywords: 'ncell axiata mobile sim 980 981 982' },
+          { title: 'Nepal Police Emergency', subtitle: 'Toll-free 24/7 Control Room', code: '100', keywords: 'police emergency control room 100' },
+          { title: 'Fire Brigade (Damkal)', subtitle: 'Fire Emergency Dispatch', code: '101', keywords: 'fire brigade damkal rescue 101' },
+          { title: 'Ambulance Dispatch', subtitle: 'Medical Emergency Services', code: '102', keywords: 'ambulance medical hospital emergency 102' },
+          { title: 'Traffic Police Helpline', subtitle: 'Road Assistance & Reporting', code: '103', keywords: 'traffic police road accident 103' },
+          { title: 'Child Helpline (CWIN)', subtitle: 'Child Protection Helpline', code: '1098', keywords: 'child helpline cwin balbalika 1098' },
+          { title: 'Tourist Police Nepal', subtitle: 'Security for Travelers', code: '1144', keywords: 'tourist police traveler tourist security 1144' },
+          { title: 'Women Commission Helpline', subtitle: 'Khabar Garaun (Gender Violence)', code: '1145', keywords: 'women commission khabar garaun mahila 1145' },
+          { title: 'Hello Sarkar', subtitle: 'Prime Minister Office Grievance', code: '1111', keywords: 'hello sarkar pmo grievance complaint 1111' }
+        ];
+
+        aliases.forEach(a => {
+          items.push(a);
+          seen.add(`${a.title.toLowerCase()}_${a.code}`);
+        });
+
+        document.querySelectorAll('.entry-content table tbody tr').forEach(row => {
+          const cells = row.querySelectorAll('td');
+          if (cells.length >= 3) {
+            const name = cells[0].textContent?.trim() || '';
+            const hq = cells[1].textContent?.trim() || '';
+            const std = cells[2].textContent?.trim() || '';
+            const intl = cells[3]?.textContent?.trim() || '';
+            if (/^\d{2,3}$/.test(std) || /^0\d{1,2}$/.test(std)) {
+              const key = `${name.toLowerCase()}_${std}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                items.push({
+                  title: `${name} District (${hq})`,
+                  subtitle: intl ? `International: ${intl}` : 'Nepal STD Area Code',
+                  code: std,
+                  intl: intl,
+                  keywords: `${name} ${hq} ${std} ${intl}`.toLowerCase()
+                });
+              }
+            }
+          }
+        });
+
+        let debounceTimer: ReturnType<typeof setTimeout>;
+        input.addEventListener('input', () => {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            const query = input.value.trim().toLowerCase();
+            if (query.length < 2) {
+              resultsBox.classList.add('hidden');
+              resultsBox.innerHTML = '';
+              statusEl.classList.add('hidden');
+              return;
+            }
+
+            const terms = query.split(/\s+/).filter(Boolean);
+            const matches = items.filter(item => {
+              const text = item.keywords || `${item.title} ${item.subtitle} ${item.code}`.toLowerCase();
+              return terms.every(t => text.includes(t));
+            }).slice(0, 20);
+
+            statusEl.classList.remove('hidden');
+            if (matches.length === 0) {
+              statusEl.textContent = `No telephone codes found matching "${input.value}". Try searching by district name or city.`;
+              resultsBox.classList.add('hidden');
+              resultsBox.innerHTML = '';
+              return;
+            }
+
+            statusEl.textContent = `Found ${matches.length} matching code${matches.length > 1 ? 's' : ''}:`;
+            resultsBox.classList.remove('hidden');
+            resultsBox.innerHTML = matches.map(m => `
+              <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 transition shadow-2xs">
+                <div>
+                  <div class="font-bold text-xs sm:text-sm text-slate-900">${m.title}</div>
+                  <div class="text-[11px] text-slate-500">${m.subtitle}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono font-bold text-xs sm:text-sm px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md tracking-wider">${m.code}</span>
+                  <button type="button" class="copy-phone-btn px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg border border-slate-200 transition cursor-pointer" data-code="${m.code}">
+                    Copy
+                  </button>
+                </div>
+              </div>
+            `).join('');
+
+            resultsBox.querySelectorAll('.copy-phone-btn').forEach(btn => {
+              btn.addEventListener('click', async () => {
+                const code = btn.getAttribute('data-code');
+                if (code && navigator.clipboard) {
+                  await navigator.clipboard.writeText(code);
+                  const orig = btn.textContent;
+                  btn.textContent = 'Copied!';
+                  btn.classList.add('bg-green-50', 'text-green-700', 'border-green-200');
+                  setTimeout(() => {
+                    btn.textContent = orig;
+                    btn.classList.remove('bg-green-50', 'text-green-700', 'border-green-200');
+                  }, 2000);
+                }
+              });
+            });
+          }, 150);
+        });
+      }
+
       setupShare();
       setupPostalSearch();
+      setupPhoneSearch();
       document.addEventListener('astro:page-load', () => {
         setupShare();
         setupPostalSearch();
+        setupPhoneSearch();
       });
     </script>
   </BaseLayout>

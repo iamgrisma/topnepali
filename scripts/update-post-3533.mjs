@@ -102,7 +102,10 @@ async function main() {
   console.log('\nPurging Cloudflare edge cache via /api/revalidate...');
   const revalRes = await fetch('https://topnepali.com/api/revalidate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-revalidate-secret': 'topnepali_revalidate_secure_token'
+    },
     body: JSON.stringify({
       secret: 'topnepali_revalidate_secure_token',
       slug: 'postal-code-zip-code-for-nepal'
