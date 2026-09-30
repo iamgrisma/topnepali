@@ -405,6 +405,15 @@ export function getPostTitle(post: WPPost | WPPage | { title?: { rendered?: stri
 }
 
 export function getPostFeaturedImage(post: WPPost | WPPage): { url: string; alt: string; width?: number; height?: number } | null {
+  if (post && 'slug' in post && post.slug === 'income-tax-rate-in-nepal') {
+    return {
+      url: 'https://topnepali.com/income-tax-rate-in-nepal.webp',
+      alt: 'Income Tax Rate in Nepal FY 2083/84 Tax Slabs',
+      width: 940,
+      height: 630,
+    };
+  }
+
   const media = post._embedded?.['wp:featuredmedia']?.[0];
   if (!media || !media.source_url) return null;
   return {

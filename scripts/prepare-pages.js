@@ -26,14 +26,17 @@ if (fs.existsSync(clientDir)) {
   console.log(`[prepare-pages] Copied static client assets to dist/ root (${items.length} items)`);
 }
 
-// 1.1 Ensure root-level favicon, robots.txt, ads.txt are present at dist/ root
-['robots.txt', 'favicon.ico', 'ads.txt'].forEach((asset) => {
-  const pubPath = path.join(rootDir, 'public', asset);
-  if (fs.existsSync(pubPath)) {
-    fs.copyFileSync(pubPath, path.join(distDir, asset));
-    console.log(`[prepare-pages] Copied ${asset} to dist/ root`);
-  }
-});
+// 1.1 Ensure root-level public files are present at dist/ root
+if (fs.existsSync(path.join(rootDir, 'public'))) {
+  const pubFiles = fs.readdirSync(path.join(rootDir, 'public'));
+  pubFiles.forEach((asset) => {
+    const pubPath = path.join(rootDir, 'public', asset);
+    if (fs.statSync(pubPath).isFile()) {
+      fs.copyFileSync(pubPath, path.join(distDir, asset));
+      console.log(`[prepare-pages] Copied ${asset} to dist/ root`);
+    }
+  });
+}
 
 // Remove _redirects completely (Zero Redirection policy)
 [path.join(clientDir, '_redirects'), path.join(distDir, '_redirects')].forEach((f) => {

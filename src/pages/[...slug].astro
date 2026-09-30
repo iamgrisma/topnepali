@@ -137,7 +137,9 @@ const candidateDesc = isRedundantDesc && fallbackExcerpt ? fallbackExcerpt : (re
 const description = cleanMetaDesc(decodeHtmlEntities(candidateDesc), 180);
 
 const featuredImg = item ? getPostFeaturedImage(item) : null;
-const rawOgImage = item?.seo?.og_image || featuredImg?.url || 'https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png';
+const rawOgImage = (item?.slug === 'income-tax-rate-in-nepal' && featuredImg?.url)
+  ? featuredImg.url
+  : (item?.seo?.og_image || featuredImg?.url || 'https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png');
 const ogImage = rawOgImage.replace(/https?:\/\/wp\.topnepali\.com/gi, 'https://topnepali.com');
 
 const rawCanonical = item?.seo?.canonical_url;
