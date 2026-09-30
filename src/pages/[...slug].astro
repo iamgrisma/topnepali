@@ -93,8 +93,15 @@ if (!resolvedSeoTitle || !resolvedSeoTitle.replace(/[\(\)\[\]\-\—\s\|\:\,]/g, 
 
 const rawTitle = decodeHtmlEntities(resolvedSeoTitle || cleanPostTitle);
 let cleanTitle = (rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} — Top Nepali`).replace(/\((\d{4})\)\s*\(\1\)/gi, '($1)');
-// Clean up repetitive trailing year when title already features that year (e.g. "(2026 Directory) ... 2026 — Top Nepali")
-cleanTitle = cleanTitle.replace(/(\b(\d{4})\b.*?)\s+\2\s*([—\-\|]\s*Top Nepali)/gi, '$1 $3');
+const trailingYearMatch = cleanTitle.match(/\s+(\d{4})\s*([—\-\|]\s*Top Nepali)$/i);
+if (trailingYearMatch) {
+  const year = trailingYearMatch[1];
+  const sepAndSite = trailingYearMatch[2];
+  const prefix = cleanTitle.slice(0, trailingYearMatch.index);
+  if (prefix.includes(year)) {
+    cleanTitle = `${prefix} ${sepAndSite}`;
+  }
+}
 const title = cleanTitle;
 
 const fallbackExcerpt = item ? stripHtml(item.excerpt?.rendered || item.content?.rendered || '').slice(0, 180) : 'The requested page could not be found.';
