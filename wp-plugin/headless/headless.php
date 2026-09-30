@@ -929,7 +929,7 @@ class TopNepali_Headless_Plugin {
             $admin_bar->add_node(array(
                 'id'     => 'topnepali-purge-current',
                 'parent' => 'topnepali-cache',
-                'title'  => '⚡ Purge Current Post Cache',
+                'title'  => 'Purge Current Post Cache',
                 'href'   => $nonce_url,
             ));
         }
@@ -942,7 +942,7 @@ class TopNepali_Headless_Plugin {
         $admin_bar->add_node(array(
             'id'     => 'topnepali-purge-all',
             'parent' => 'topnepali-cache',
-            'title'  => '🔄 Purge Entire Frontend Cache',
+            'title'  => 'Purge Entire Frontend Cache',
             'href'   => $nonce_all_url,
         ));
 
@@ -954,7 +954,7 @@ class TopNepali_Headless_Plugin {
         $admin_bar->add_node(array(
             'id'     => 'topnepali-warm-all',
             'parent' => 'topnepali-cache',
-            'title'  => '🔥 Pre-Warm Edge CDN',
+            'title'  => 'Pre-Warm Edge CDN',
             'href'   => $nonce_warm_url,
         ));
     }
@@ -1238,7 +1238,7 @@ class TopNepali_Headless_Plugin {
                         required
                     />
                     <button type="submit" class="button button-secondary" name="topnepali_purge_custom_url">
-                        ⚡ Purge Specific URL Cache
+                        Purge Specific URL Cache
                     </button>
                 </form>
             </div>
@@ -1249,7 +1249,7 @@ class TopNepali_Headless_Plugin {
                 <form method="post" action="" onsubmit="return confirm('Are you sure you want to purge the entire site cache?');">
                     <?php wp_nonce_field('topnepali_purge_entire_action', 'topnepali_purge_entire_nonce'); ?>
                     <button type="submit" class="button button-secondary" name="topnepali_purge_entire_cache">
-                        🔄 Purge Entire Frontend Cache
+                        Purge Entire Frontend Cache
                     </button>
                 </form>
             </div>
@@ -1261,7 +1261,7 @@ class TopNepali_Headless_Plugin {
                     <?php wp_nonce_field('topnepali_warm_action', 'topnepali_warm_nonce'); ?>
                     <input type="hidden" name="topnepali_warm_recent" value="1" />
                     <button type="submit" class="button button-primary">
-                        🔥 Pre-Warm Top 20 Posts & Archives
+                        Pre-Warm Top 20 Posts & Archives
                     </button>
                 </form>
             </div>

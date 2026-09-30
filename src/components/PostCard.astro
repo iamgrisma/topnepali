@@ -1,5 +1,4 @@
 ---
-// PostCard.astro — Clean post card component matching GeneratePress / TopNepali blog stream
 import type { WPPost } from '../types/wp';
 import {
   formatDate,
@@ -30,15 +29,13 @@ const excerpt = stripHtml(post.excerpt?.rendered || '');
 <article class={`post-card ${featured ? 'is-featured' : ''}`}>
   {featuredImage && (
     <a href={`/${post.slug}`} class="card-media-link" tabindex="-1" aria-hidden="true">
-      <div class="card-media-wrapper">
-        <img
-          src={featuredImage.url}
-          alt={featuredImage.alt}
-          class="card-img"
-          loading={featured ? 'eager' : 'lazy'}
-          decoding="async"
-        />
-      </div>
+      <img
+        src={featuredImage.url}
+        alt={featuredImage.alt}
+        class="card-img"
+        loading={featured ? 'eager' : 'lazy'}
+        decoding="async"
+      />
     </a>
   )}
 
@@ -107,10 +104,6 @@ const excerpt = stripHtml(post.excerpt?.rendered || '');
 
   .card-media-link {
     display: block;
-    overflow: hidden;
-  }
-
-  .card-media-wrapper {
     aspect-ratio: 16 / 9;
     overflow: hidden;
     background: #f1f5f9;

@@ -1,4 +1,46 @@
 ---
-// blog.astro — Permanent 301 redirect to canonical /blogs archive
-return Astro.redirect('/blogs', 301);
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ArchiveStream from '../components/ArchiveStream.astro';
+import { getPosts, getSiteInfo, DEFAULT_TOP_CATEGORIES } from '../lib/wp';
+
+const pageParam = Astro.url.searchParams.get('page');
+const currentPage = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
+const perPage = 10;
+
+const siteInfo = getSiteInfo();
+const postsResult = await getPosts({ page: currentPage, perPage });
+const { data: posts, total, totalPages } = postsResult;
+const isFirstPage = currentPage === 1;
+const featuredPost = isFirstPage && posts.length > 0 ? posts[0] : null;
+
+const topicChips = [
+  { name: 'All', href: '/blogs', active: true },
+  ...DEFAULT_TOP_CATEGORIES.slice(0, 8).map((cat) => ({
+    name: cat.name,
+    href: `/category/${cat.slug}`,
+  })),
+];
 ---
+
+<BaseLayout
+  title={isFirstPage ? `Blogs & Articles — ${siteInfo.name}` : `Articles — Page ${currentPage} | ${siteInfo.name}`}
+  description="Comprehensive archive of TopNepali articles, educational routines, career vacancies, civic affairs, and national guides."
+  canonicalUrl={currentPage > 1 ? `https://topnepali.com/blogs?page=${currentPage}` : 'https://topnepali.com/blogs'}
+>
+  <ArchiveStream
+    badgeLabel="Editorial Feed"
+    heading="TopNepali Editorial Feed"
+    description="Verified updates covering Tribhuvan University routines, Loksewa exam notices, career vacancies, and civic affairs across Nepal."
+    total={total}
+    breadcrumbs={[
+      { label: 'Portal Home', href: '/' },
+      { label: 'Blogs & Articles' },
+    ]}
+    topicChips={topicChips}
+    posts={posts}
+    currentPage={currentPage}
+    totalPages={totalPages}
+    baseUrl="/blog"
+    featuredPost={featuredPost}
+  />
+</BaseLayout>

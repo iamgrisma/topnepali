@@ -1,26 +1,25 @@
 ---
-// blogs.astro — Dedicated Editorial Blog Archive & Feed for TopNepali
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PostCard from '../components/PostCard.astro';
-import Sidebar from '../components/Sidebar.astro';
-import Pagination from '../components/Pagination.astro';
+import ArchiveStream from '../components/ArchiveStream.astro';
 import { getPosts, getSiteInfo, DEFAULT_TOP_CATEGORIES } from '../lib/wp';
 
-// Parse query params for dynamic SSR pagination
 const pageParam = Astro.url.searchParams.get('page');
 const currentPage = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
 const perPage = 10;
 
-// Instant synchronous site info
 const siteInfo = getSiteInfo();
-
-// Dynamic fetch directly from WordPress REST API with pruned payload
 const postsResult = await getPosts({ page: currentPage, perPage });
-
 const { data: posts, total, totalPages } = postsResult;
 const isFirstPage = currentPage === 1;
 const featuredPost = isFirstPage && posts.length > 0 ? posts[0] : null;
-const streamPosts = isFirstPage ? posts.slice(1) : posts;
+
+const topicChips = [
+  { name: 'All', href: '/blogs', active: true },
+  ...DEFAULT_TOP_CATEGORIES.slice(0, 8).map((cat) => ({
+    name: cat.name,
+    href: `/category/${cat.slug}`,
+  })),
+];
 ---
 
 <BaseLayout
@@ -28,104 +27,20 @@ const streamPosts = isFirstPage ? posts.slice(1) : posts;
   description="Comprehensive archive of TopNepali articles, educational routines, career vacancies, civic affairs, and national guides."
   canonicalUrl={currentPage > 1 ? `https://topnepali.com/blogs?page=${currentPage}` : 'https://topnepali.com/blogs'}
 >
-  <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-10">
-    
-    <!-- Editorial Header Header -->
-    <header class="mb-8 pb-6 border-b border-slate-200">
-      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <nav class="flex items-center gap-2 text-xs text-slate-500 mb-2.5" aria-label="Breadcrumb">
-            <a href="/" class="hover:text-indigo-600 transition">Portal Home</a>
-            <span>/</span>
-            <span class="text-slate-900 font-semibold">Blogs & Articles</span>
-          </nav>
-          <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">
-            TopNepali Editorial Feed
-          </h1>
-          <p class="text-sm text-slate-600 mt-2 max-w-2xl leading-relaxed">
-            Verified updates covering Tribhuvan University routines, Loksewa exam notices, career vacancies, and civic affairs across Nepal.
-          </p>
-        </div>
-        <div class="shrink-0 flex items-center gap-2 text-xs font-mono text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200/80">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>{total > 0 ? `${total} Total Publications` : 'Live Feed'}</span>
-        </div>
-      </div>
-
-      <!-- Quick Category Filter Bar -->
-      <nav class="mt-6 pt-4 border-t border-slate-100 flex items-center gap-2 overflow-x-auto pb-1 text-xs no-scrollbar" aria-label="Category Topics">
-        <span class="text-slate-400 font-medium shrink-0 mr-1">Topics:</span>
-        <a
-          href="/blogs"
-          class="shrink-0 px-3 py-1 rounded-full font-semibold bg-indigo-600 text-white shadow-2xs"
-        >
-          All
-        </a>
-        {DEFAULT_TOP_CATEGORIES.slice(0, 8).map((cat) => (
-          <a
-            href={`/category/${cat.slug}`}
-            class="shrink-0 px-3 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 font-medium transition"
-          >
-            {cat.name}
-          </a>
-        ))}
-      </nav>
-    </header>
-
-    <div class="flex flex-col lg:flex-row gap-8 items-start">
-      
-      <!-- Primary Content Stream (~68%) -->
-      <div class="w-full lg:w-[68%] min-w-0">
-        
-        <!-- Lead Featured Article (Page 1) -->
-        {featuredPost && (
-          <section class="mb-8" aria-label="Featured Story">
-            <PostCard post={featuredPost} featured={true} />
-          </section>
-        )}
-
-        <!-- Stream Divider -->
-        <div class="flex items-center justify-between pb-3 mb-6 border-b-2 border-slate-200">
-          <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
-            <span>{isFirstPage ? 'Recent Dispatches' : `Articles — Page ${currentPage}`}</span>
-          </h2>
-          <span class="text-xs text-slate-500">
-            Page {currentPage} of {totalPages || 1}
-          </span>
-        </div>
-
-        <!-- Post Stream Grid -->
-        {streamPosts.length > 0 ? (
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {streamPosts.map((post) => (
-              <PostCard post={post} />
-            ))}
-          </div>
-        ) : (
-          <div class="p-8 text-center bg-white rounded-xl border border-slate-200">
-            <p class="text-slate-600 text-sm">
-              No articles found in this feed.
-            </p>
-            <a href="/blogs" class="mt-3 inline-block text-xs font-semibold text-indigo-600 hover:underline">
-              Return to first page
-            </a>
-          </div>
-        )}
-
-        <!-- Dynamic Pagination -->
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          baseUrl="/blogs"
-        />
-      </div>
-
-      <!-- Right Sidebar (~32%) -->
-      <div class="w-full lg:w-[32%] shrink-0">
-        <Sidebar excludePostId={featuredPost?.id} recentPosts={posts} />
-      </div>
-
-    </div>
-  </div>
+  <ArchiveStream
+    badgeLabel="Editorial Feed"
+    heading="TopNepali Editorial Feed"
+    description="Verified updates covering Tribhuvan University routines, Loksewa exam notices, career vacancies, and civic affairs across Nepal."
+    total={total}
+    breadcrumbs={[
+      { label: 'Portal Home', href: '/' },
+      { label: 'Blogs & Articles' },
+    ]}
+    topicChips={topicChips}
+    posts={posts}
+    currentPage={currentPage}
+    totalPages={totalPages}
+    baseUrl="/blogs"
+    featuredPost={featuredPost}
+  />
 </BaseLayout>

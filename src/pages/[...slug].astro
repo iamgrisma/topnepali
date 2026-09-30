@@ -1,7 +1,7 @@
 ---
-// [...slug].astro — Universal SSR Dynamic Post & Page Reader for TopNepali
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Sidebar from '../components/Sidebar.astro';
+import EmptyState from '../components/EmptyState.astro';
 import {
   getPostBySlug,
   getPageBySlug,
@@ -19,7 +19,7 @@ import {
   optimizeWpHtml,
   resolveRankMathVariables,
   getAllCategories,
-  getRankMathRedirection
+  getRankMathRedirection,
 } from '../lib/wp';
 
 const rawSlug = Astro.params.slug;
@@ -28,10 +28,8 @@ if (!rawSlug) {
   return;
 }
 
-// Clean slug (handles any trailing slash without HTTP redirect)
 const cleanSlug = rawSlug.replace(/^\/+|\/+$/g, '');
 
-// Known static pages list to avoid sending duplicate post+page queries to WordPress
 const KNOWN_PAGES = new Set([
   'about', 'about-us', 'contact', 'contact-us', 'privacy-policy', 'privacy',
   'terms', 'terms-and-conditions', 'disclaimer', 'dmca', 'sitemap'
@@ -39,17 +37,10 @@ const KNOWN_PAGES = new Set([
 
 const isKnownPage = KNOWN_PAGES.has(cleanSlug.toLowerCase());
 
-// Query dynamic Rank Math redirection and content concurrently
 const [rmRedirect, initialContent] = await Promise.all([
   getRankMathRedirection(cleanSlug),
   isKnownPage ? getPageBySlug(cleanSlug) : getPostBySlug(cleanSlug),
 ]);
-
-// 1. If WordPress / Rank Math has configured a redirection for this slug, dynamically redirect
-if (rmRedirect?.redirect_url) {
-  const status = rmRedirect.redirect_type === 302 ? 302 : 301;
-  return Astro.redirect(rmRedirect.redirect_url, status);
-}
 
 let post = isKnownPage ? null : initialContent;
 let page = isKnownPage ? initialContent : null;
@@ -58,23 +49,27 @@ if (!post && !page && !isKnownPage) {
   page = await getPageBySlug(cleanSlug);
 }
 
-// Prepare post metadata
-const isArticle = Boolean(post);
-const item = post || page;
-
-// 2. If post or page has Rank Math redirection configured in SEO metadata, dynamically forward
-if (item?.seo?.redirect_url) {
-  const target = item.seo.redirect_url.replace(/^https?:\/\/(?:wp\.)?topnepali\.com/i, '');
-  const status = item.seo.redirect_type === 302 ? 302 : 301;
-  return Astro.redirect(target, status);
+// In-memory alias / redirect rewrite: If Rank Math configured a redirection, fetch target in-memory with zero HTTP redirect hops
+const redirectTarget = rmRedirect?.redirect_url || (post || page)?.seo?.redirect_url;
+if ((!post && !page) && redirectTarget) {
+  const cleanTargetSlug = redirectTarget
+    .replace(/^https?:\/\/(?:wp\.)?topnepali\.com/i, '')
+    .replace(/^\/+|\/+$/g, '');
+  if (cleanTargetSlug && cleanTargetSlug !== cleanSlug) {
+    post = await getPostBySlug(cleanTargetSlug);
+    if (!post) {
+      page = await getPageBySlug(cleanTargetSlug);
+    }
+  }
 }
 
-// 3. If neither post nor page exists, set 404 status
 if (!post && !page) {
   Astro.response.status = 404;
 }
 
-// Author, Categories, Tags & Dates (prepared early for SEO variables)
+const isArticle = Boolean(post);
+const item = post || page;
+
 const author = post ? getPostAuthor(post) : null;
 const categories = post ? getPostCategories(post) : [];
 const tags = post ? getPostTags(post) : [];
@@ -83,7 +78,6 @@ const allCategories = await getAllCategories();
 const fullPrimary = primaryCategory ? allCategories.find((ac) => ac.id === primaryCategory.id || ac.slug === primaryCategory.slug) : null;
 const parentCategory = (fullPrimary && fullPrimary.parent > 0) ? allCategories.find((p) => p.id === fullPrimary.parent) : null;
 
-// 1. Title: Prefer Rank Math SEO title if present, fallback to post title
 const cleanPostTitle = item ? getPostTitle(item) : 'Page Not Found';
 
 let resolvedSeoTitle = resolveRankMathVariables(item?.seo?.title, {
@@ -100,7 +94,6 @@ if (!resolvedSeoTitle || !resolvedSeoTitle.replace(/[\(\)\[\]\-\—\s\|\:\,]/g, 
 const rawTitle = decodeHtmlEntities(resolvedSeoTitle || cleanPostTitle);
 const title = (rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} — Top Nepali`).replace(/\((\d{4})\)\s*\(\1\)/gi, '($1)');
 
-// 2. Description: Prefer Rank Math SEO description, fallback to post excerpt
 const fallbackExcerpt = item ? stripHtml(item.excerpt?.rendered || item.content?.rendered || '').slice(0, 160) : 'The requested page could not be found.';
 const resolvedSeoDesc = resolveRankMathVariables(item?.seo?.description, {
   title: cleanPostTitle,
@@ -111,29 +104,24 @@ const resolvedSeoDesc = resolveRankMathVariables(item?.seo?.description, {
 });
 const description = decodeHtmlEntities(resolvedSeoDesc || fallbackExcerpt);
 
-// 3. Featured Image / OG Image
 const featuredImg = item ? getPostFeaturedImage(item) : null;
 const rawOgImage = item?.seo?.og_image || featuredImg?.url || 'https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png';
 const ogImage = rawOgImage.replace(/https?:\/\/wp\.topnepali\.com/gi, 'https://topnepali.com');
 
-// 4. Canonical URL: Prefer Rank Math canonical URL (rewritten to frontend domain), fallback to site canonical
 const rawCanonical = item?.seo?.canonical_url;
 const canonicalUrl = rawCanonical
   ? rawCanonical.replace(/https?:\/\/wp\.topnepali\.com/gi, 'https://topnepali.com')
   : (item ? `https://topnepali.com/${cleanSlug}` : undefined);
 
-// 5. Reading Time, Dates, Robots & Head
 const readingTime = item ? estimateReadingTime(item) : '';
 const publishedTime = post?.date;
 const modifiedTime = post?.modified;
 const robots = typeof item?.seo?.robots === 'string' ? item.seo.robots : null;
 
-// Sanitize Rank Math's rendered head HTML to rewrite backend wp.topnepali.com references to production topnepali.com
 const headHtml = item?.head
   ? item.head.replace(/https?:\/\/wp\.topnepali\.com/gi, 'https://topnepali.com')
   : null;
 
-// Fetch related posts and recent posts in parallel (eliminates sequential API waterfall)
 const [relResult, recentPosts] = await Promise.all([
   (post && primaryCategory)
     ? getPosts({ category: primaryCategory.id, perPage: 3, exclude: [post.id] })
@@ -146,66 +134,24 @@ const currentUrl = Astro.url.href;
 ---
 
 {(!post && !page) ? (
-  <BaseLayout title="404 — Page Not Found | Top Nepali" description="The page you were looking for could not be found.">
+  <BaseLayout title="404 — Page Not Found | Top Nepali" description="The page you were looking for could not be found." robots="noindex, nofollow">
     <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-8">
-      <!-- Breadcrumb -->
       <nav class="flex items-center gap-2 text-xs text-slate-500 mb-6" aria-label="Breadcrumb">
-        <a href="/" class="hover:text-indigo-600">Home</a>
+        <a href="/" class="hover:text-indigo-600 transition">Portal Home</a>
         <span>/</span>
         <span class="text-slate-900 font-semibold">404 Not Found</span>
       </nav>
 
       <div class="flex flex-col lg:flex-row gap-8 items-start">
-        <!-- Primary Content Area -->
         <div class="w-full lg:w-[68%] min-w-0">
-          <div class="p-8 sm:p-12 text-center bg-white rounded-xl border border-slate-200 shadow-2xs">
-            <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4 text-slate-400">
-              <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-            </div>
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">404 — Page Not Found</h1>
-            <p class="text-slate-600 text-sm max-w-md mx-auto mb-6">
-              The article or page "{cleanSlug}" could not be located in the TopNepali digital archive. It may have been moved, renamed, or is temporarily unavailable.
-            </p>
-
-            <!-- Search form -->
-            <form action="/search" method="get" class="max-w-md mx-auto mb-6">
-              <div class="relative flex items-center">
-                <input
-                  type="search"
-                  name="q"
-                  placeholder="Search articles on Top Nepali..."
-                  required
-                  class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 transition"
-                />
-                <button
-                  type="submit"
-                  class="absolute right-2 p-1.5 text-slate-400 hover:text-indigo-600 transition"
-                  aria-label="Search"
-                >
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                </button>
-              </div>
-            </form>
-
-            <div class="flex items-center justify-center gap-3">
-              <a href="/" class="px-5 py-2.5 bg-indigo-900 text-white rounded-lg text-xs font-semibold hover:bg-indigo-800 transition">
-                Return to Homepage
-              </a>
-              <a href="/search" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50 transition">
-                Search Articles
-              </a>
-            </div>
-          </div>
+          <EmptyState
+            title="404 — Page Not Found"
+            message={`The article or page "${cleanSlug}" could not be located in the TopNepali digital archive. It may have been moved, renamed, or is temporarily unavailable.`}
+            icon="file-question"
+            primaryAction={{ label: 'Return to Portal', href: '/' }}
+            secondaryAction={{ label: 'Browse All Blogs', href: '/blogs' }}
+          />
         </div>
-
-        <!-- Right Sidebar -->
         <div class="w-full lg:w-[32%] shrink-0">
           <Sidebar />
         </div>
@@ -227,14 +173,13 @@ const currentUrl = Astro.url.href;
     robots={robots}
   >
     <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-8">
-      
       <!-- Breadcrumb Navigation -->
       <nav class="flex items-center gap-2 text-xs text-slate-500 mb-6 flex-wrap" aria-label="Breadcrumb">
-        <a href="/" class="hover:text-indigo-600">Home</a>
+        <a href="/" class="hover:text-indigo-600 transition">Home</a>
         <span>/</span>
         {parentCategory && (
           <>
-            <a href={`/category/${parentCategory.slug}`} class="hover:text-indigo-600">
+            <a href={`/category/${parentCategory.slug}`} class="hover:text-indigo-600 transition">
               {parentCategory.name}
             </a>
             <span>/</span>
@@ -242,7 +187,7 @@ const currentUrl = Astro.url.href;
         )}
         {primaryCategory && (
           <>
-            <a href={`/category/${primaryCategory.slug}`} class="hover:text-indigo-600">
+            <a href={`/category/${primaryCategory.slug}`} class="hover:text-indigo-600 transition">
               {primaryCategory.name}
             </a>
             <span>/</span>
@@ -254,11 +199,8 @@ const currentUrl = Astro.url.href;
       </nav>
 
       <div class="flex flex-col lg:flex-row gap-8 items-start">
-        
         <!-- Primary Article Container -->
         <article class="w-full lg:w-[68%] min-w-0 bg-white rounded-xl border border-slate-200 shadow-2xs p-5 sm:p-8">
-          
-          <!-- Category Badge -->
           {primaryCategory && (
             <div class="mb-3">
               <a
@@ -270,12 +212,10 @@ const currentUrl = Astro.url.href;
             </div>
           )}
 
-          <!-- Headline -->
           <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight mb-4 tracking-tight">
             {cleanPostTitle}
           </h1>
 
-          <!-- Meta Bar (Author, Date, Reading Time) -->
           {isArticle && author && post && (
             <div class="flex flex-wrap items-center justify-between gap-4 py-3.5 mb-6 border-y border-slate-100 text-xs text-slate-500">
               <div class="flex items-center gap-3">
@@ -303,7 +243,6 @@ const currentUrl = Astro.url.href;
                 </div>
               </div>
 
-              <!-- Share Quick Trigger -->
               <div class="flex items-center gap-2">
                 <button
                   type="button"
@@ -322,7 +261,6 @@ const currentUrl = Astro.url.href;
             </div>
           )}
 
-          <!-- Featured Media Banner -->
           {featuredImg && (
             <figure class="mb-8 rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
               <img
@@ -339,10 +277,8 @@ const currentUrl = Astro.url.href;
             </figure>
           )}
 
-          <!-- Dynamic WordPress Content (Sanitized & Debloated) -->
           <div class="entry-content mb-8" set:html={optimizeWpHtml(item?.content?.rendered || '')} />
 
-          <!-- Tags List -->
           {tags.length > 0 && (
             <div class="pt-6 border-t border-slate-100 mb-8">
               <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2.5">
@@ -361,7 +297,6 @@ const currentUrl = Astro.url.href;
             </div>
           )}
 
-          <!-- Author Bio Box -->
           {author && isArticle && (
             <div class="p-5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-start gap-4 mb-8">
               {author.avatar ? (
@@ -387,7 +322,6 @@ const currentUrl = Astro.url.href;
             </div>
           )}
 
-          <!-- Related Posts Section -->
           {relatedPosts.length > 0 && (
             <div class="pt-8 border-t border-slate-100">
               <h3 class="font-bold text-base text-slate-900 mb-4">
@@ -423,18 +357,15 @@ const currentUrl = Astro.url.href;
               </div>
             </div>
           )}
-
         </article>
 
         <!-- Right Sidebar -->
         <div class="w-full lg:w-[32%] shrink-0">
           <Sidebar excludePostId={post?.id} recentPosts={recentPosts} />
         </div>
-
       </div>
     </div>
 
-    <!-- Script for copy/share functionality -->
     <script>
       function setupShare() {
         const btn = document.getElementById('share-copy-btn');
@@ -450,9 +381,7 @@ const currentUrl = Astro.url.href;
                 url: url,
               });
               return;
-            } catch (err) {
-              // fallback to copy
-            }
+            } catch {}
           }
 
           if (navigator.clipboard) {

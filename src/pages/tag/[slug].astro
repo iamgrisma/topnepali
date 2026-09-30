@@ -1,9 +1,8 @@
 ---
-// [slug].astro (Tag Archive) — Dynamic SSR Tag Archive for TopNepali
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostCard from '../../components/PostCard.astro';
+import ArchiveStream from '../../components/ArchiveStream.astro';
+import EmptyState from '../../components/EmptyState.astro';
 import Sidebar from '../../components/Sidebar.astro';
-import Pagination from '../../components/Pagination.astro';
 import { getTagBySlug, getPosts } from '../../lib/wp';
 
 const rawSlug = Astro.params.slug || '';
@@ -14,12 +13,10 @@ if (!tag) {
   Astro.response.status = 404;
 }
 
-// Dynamic pagination
 const pageParam = Astro.url.searchParams.get('page');
 const currentPage = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
 const perPage = 10;
 
-// Fetch posts with this tag if tag exists
 let posts: any[] = [];
 let total = 0;
 let totalPages = 0;
@@ -34,6 +31,13 @@ if (tag) {
   total = postsResult.total;
   totalPages = postsResult.totalPages;
 }
+
+const breadcrumbs = [
+  { label: 'Portal Home', href: '/' },
+  { label: 'Blogs', href: '/blogs' },
+  { label: 'Tag' },
+  { label: tag ? `#${tag.name}` : 'Not Found' },
+];
 ---
 
 <BaseLayout
@@ -42,122 +46,42 @@ if (tag) {
   canonicalUrl={currentPage > 1 ? `https://topnepali.com/tag/${cleanSlug}?page=${currentPage}` : `https://topnepali.com/tag/${cleanSlug}`}
   robots={!tag ? 'noindex, nofollow' : undefined}
 >
-  <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-10">
-    <!-- Breadcrumb -->
-    <nav class="flex items-center gap-2 text-xs text-slate-500 mb-6" aria-label="Breadcrumb">
-      <a href="/" class="hover:text-indigo-600 transition">Portal Home</a>
-      <span>/</span>
-      <a href="/blogs" class="hover:text-indigo-600 transition">Blogs</a>
-      <span>/</span>
-      <span class="text-slate-400">Tag</span>
-      <span>/</span>
-      <span class="text-slate-900 font-semibold">#{tag ? tag.name : 'Not Found'}</span>
-    </nav>
-
-    <div class="flex flex-col lg:flex-row gap-8 items-start">
-      
-      <!-- Primary Content Area -->
-      <div class="w-full lg:w-[68%] min-w-0">
-        {!tag ? (
-          <div class="p-8 sm:p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-2xs">
-            <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4 text-slate-400">
-              <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-                <line x1="7" y1="7" x2="7.01" y2="7" />
-              </svg>
-            </div>
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">Tag Not Located</h1>
-            <p class="text-slate-600 text-sm max-w-md mx-auto mb-6">
-              No articles are currently indexed under the tag "#{cleanSlug}".
-            </p>
-            <form action="/search" method="get" class="max-w-md mx-auto mb-6">
-              <div class="relative flex items-center">
-                <input
-                  type="search"
-                  name="q"
-                  placeholder="Search articles on Top Nepali..."
-                  required
-                  class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-indigo-600 transition"
-                />
-                <button
-                  type="submit"
-                  class="absolute right-2 p-1.5 text-slate-400 hover:text-indigo-600 transition"
-                  aria-label="Search"
-                >
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                </button>
-              </div>
-            </form>
-            <div class="flex items-center justify-center gap-3">
-              <a href="/blogs" class="px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
-                Browse All Blogs
-              </a>
-              <a href="/" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50 transition">
-                Return to Portal
-              </a>
-            </div>
-          </div>
-        ) : (
-          <>
-            <!-- Minimalist Tag Archive Header -->
-            <header class="p-6 sm:p-8 mb-8 bg-white rounded-2xl border border-slate-200 shadow-2xs">
-              <div class="flex items-center justify-between gap-4 mb-3">
-                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold uppercase tracking-wider">
-                  <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-                  <span>Topic Tag</span>
-                </div>
-                <span class="text-xs font-mono text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200/80">
-                  {total} {total === 1 ? 'Article' : 'Articles'}
-                </span>
-              </div>
-
-              <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight mb-2">
-                #{tag.name}
-              </h1>
-
-              {tag.description && (
-                <p class="text-sm text-slate-600 leading-relaxed max-w-2xl mt-2">
-                  {tag.description}
-                </p>
-              )}
-            </header>
-
-            <!-- Posts Stream -->
-            {posts.length > 0 ? (
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {posts.map((post) => (
-                  <PostCard post={post} />
-                ))}
-              </div>
-            ) : (
-              <div class="p-8 text-center bg-white rounded-2xl border border-slate-200">
-                <p class="text-slate-600 text-sm">
-                  No articles found under this tag yet.
-                </p>
-                <a href="/blogs" class="mt-3 inline-block text-xs font-semibold text-indigo-600 hover:underline">
-                  Browse All Articles
-                </a>
-              </div>
-            )}
-
-            <!-- Dynamic Pagination -->
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              baseUrl={`/tag/${cleanSlug}`}
-            />
-          </>
-        )}
+  {!tag ? (
+    <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-10">
+      <nav class="flex items-center gap-2 text-xs text-slate-500 mb-6" aria-label="Breadcrumb">
+        <a href="/" class="hover:text-indigo-600 transition">Portal Home</a>
+        <span>/</span>
+        <a href="/blogs" class="hover:text-indigo-600 transition">Blogs</a>
+        <span>/</span>
+        <span class="text-slate-900 font-semibold">Tag Not Found</span>
+      </nav>
+      <div class="flex flex-col lg:flex-row gap-8 items-start">
+        <div class="w-full lg:w-[68%] min-w-0">
+          <EmptyState
+            title="Tag Not Located"
+            message={`No articles are currently indexed under the tag "#${cleanSlug}".`}
+            icon="tag"
+            primaryAction={{ label: 'Browse All Blogs', href: '/blogs' }}
+            secondaryAction={{ label: 'Return to Portal', href: '/' }}
+          />
+        </div>
+        <div class="w-full lg:w-[32%] shrink-0">
+          <Sidebar />
+        </div>
       </div>
-
-      <!-- Right Sidebar -->
-      <div class="w-full lg:w-[32%] shrink-0">
-        <Sidebar recentPosts={posts} />
-      </div>
-
     </div>
-  </div>
+  ) : (
+    <ArchiveStream
+      badgeLabel="Topic Tag"
+      heading={`#${tag.name}`}
+      description={tag.description || `Articles and editorial publications tagged with #${tag.name}.`}
+      total={total}
+      breadcrumbs={breadcrumbs}
+      posts={posts}
+      currentPage={currentPage}
+      totalPages={totalPages}
+      baseUrl={`/tag/${cleanSlug}`}
+      emptyMessage="No articles found under this tag yet."
+    />
+  )}
 </BaseLayout>

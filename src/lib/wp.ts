@@ -397,14 +397,11 @@ export async function getRecentPosts(limit: number = 5): Promise<WPPost[]> {
   return res.data;
 }
 
-// ---------------------------------------------------------------------
 // Presentation Helper Utilities
-// ---------------------------------------------------------------------
-
 export function getPostTitle(post: WPPost | WPPage | { title?: { rendered?: string } } | string | null | undefined): string {
   if (!post) return '';
   const raw = typeof post === 'string' ? post : (post.title?.rendered || '');
-  return decodeHtmlEntities(raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+  return stripHtml(raw);
 }
 
 export function getPostFeaturedImage(post: WPPost | WPPage): { url: string; alt: string; width?: number; height?: number } | null {

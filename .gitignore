@@ -17,7 +17,10 @@ pnpm-debug.log*
 .env.local
 .env.*.local
 .mcp-token.json
-scripts/.mcp-token.json
+# Scratch and dump files
+scripts/*.json
+scripts/*.html
+scripts/scratch*
 
 # OS
 .DS_Store

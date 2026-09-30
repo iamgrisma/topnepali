@@ -341,51 +341,47 @@ const knowledgeHubs = [
       </a>
     </div>
 
-    <!-- Lead Spotlight Post (if available) -->
+    <!-- Lead Spotlight Post -->
     {leadPost && (
-      <div class="mb-8">
+      <article class="mb-8 p-6 sm:p-8 rounded-2xl bg-white border border-slate-200 hover:border-indigo-400 transition shadow-xs flex flex-col lg:flex-row gap-6 items-center">
         {(() => {
           const leadImg = getPostFeaturedImage(leadPost);
-          return (
-            <article class="p-6 sm:p-8 rounded-2xl bg-white border border-slate-200 hover:border-indigo-400 transition shadow-xs flex flex-col lg:flex-row gap-6 items-center">
-              {leadImg && (
-                <a href={`/${leadPost.slug}`} class="w-full lg:w-1/2 aspect-video overflow-hidden rounded-xl bg-slate-100 shrink-0">
-                  <img
-                    src={leadImg.url}
-                    alt={leadImg.alt}
-                    class="w-full h-full object-cover hover:scale-105 transition duration-300"
-                    loading="eager"
-                  />
-                </a>
-              )}
-              <div class="flex-1">
-                <div class="flex items-center gap-2 text-xs text-slate-400 mb-3">
-                  <span class="font-bold uppercase tracking-wider text-indigo-600">Featured Dispatch</span>
-                  <span>&bull;</span>
-                  <time datetime={leadPost.date}>{formatDate(leadPost.date)}</time>
-                  <span>&bull;</span>
-                  <span>{estimateReadingTime(leadPost)}</span>
-                </div>
-                <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-3 leading-snug">
-                  <a href={`/${leadPost.slug}`} class="hover:text-indigo-600 transition">
-                    {getPostTitle(leadPost)}
-                  </a>
-                </h3>
-                <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6 line-clamp-3">
-                  {stripHtml(leadPost.excerpt?.rendered || '')}
-                </p>
-                <a
-                  href={`/${leadPost.slug}`}
-                  class="inline-flex items-center gap-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition"
-                >
-                  <span>Read Full Article</span>
-                  <span>&rarr;</span>
-                </a>
-              </div>
-            </article>
-          );
+          return leadImg ? (
+            <a href={`/${leadPost.slug}`} class="w-full lg:w-1/2 aspect-video overflow-hidden rounded-xl bg-slate-100 shrink-0">
+              <img
+                src={leadImg.url}
+                alt={leadImg.alt}
+                class="w-full h-full object-cover hover:scale-105 transition duration-300"
+                loading="eager"
+              />
+            </a>
+          ) : null;
         })()}
-      </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2 text-xs text-slate-400 mb-3">
+            <span class="font-bold uppercase tracking-wider text-indigo-600">Featured Dispatch</span>
+            <span>&bull;</span>
+            <time datetime={leadPost.date}>{formatDate(leadPost.date)}</time>
+            <span>&bull;</span>
+            <span>{estimateReadingTime(leadPost)}</span>
+          </div>
+          <h3 class="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-3 leading-snug">
+            <a href={`/${leadPost.slug}`} class="hover:text-indigo-600 transition">
+              {getPostTitle(leadPost)}
+            </a>
+          </h3>
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6 line-clamp-3">
+            {stripHtml(leadPost.excerpt?.rendered || '')}
+          </p>
+          <a
+            href={`/${leadPost.slug}`}
+            class="inline-flex items-center gap-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition"
+          >
+            <span>Read Full Article</span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+      </article>
     )}
 
     <!-- Secondary & Tertiary Grid -->
