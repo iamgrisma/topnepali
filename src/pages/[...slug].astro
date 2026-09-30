@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Sidebar from '../components/Sidebar.astro';
 import EmptyState from '../components/EmptyState.astro';
 import TableOfContents from '../components/TableOfContents.astro';
+import Breadcrumb from '../components/Breadcrumb.astro';
 import {
   getPostBySlug,
   getPageBySlug,
@@ -173,11 +174,12 @@ const tocHeadings = isArticle ? extractTocHeadings(contentHtml) : [];
 {(!post && !page) ? (
   <BaseLayout title="404 — Page Not Found | Top Nepali" description="The page you were looking for could not be found." robots="noindex, nofollow">
     <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-8">
-      <nav class="flex items-center gap-2 text-xs text-slate-500 mb-6" aria-label="Breadcrumb">
-        <a href="/" class="hover:text-indigo-600 transition">Portal Home</a>
-        <span>/</span>
-        <span class="text-slate-900 font-semibold">404 Not Found</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: 'Portal Home', href: '/' },
+          { label: '404 Not Found' }
+        ]}
+      />
 
       <div class="flex flex-col lg:flex-row gap-8 items-start">
         <div class="w-full lg:w-[68%] min-w-0">
@@ -212,29 +214,14 @@ const tocHeadings = isArticle ? extractTocHeadings(contentHtml) : [];
   >
     <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-8">
       <!-- Breadcrumb Navigation -->
-      <nav class="flex items-center gap-2 text-xs text-slate-500 mb-6 flex-wrap" aria-label="Breadcrumb">
-        <a href="/" class="hover:text-indigo-600 transition">Home</a>
-        <span>/</span>
-        {parentCategory && (
-          <>
-            <a href={`/category/${parentCategory.slug}`} class="hover:text-indigo-600 transition">
-              {parentCategory.name}
-            </a>
-            <span>/</span>
-          </>
-        )}
-        {primaryCategory && (
-          <>
-            <a href={`/category/${primaryCategory.slug}`} class="hover:text-indigo-600 transition">
-              {primaryCategory.name}
-            </a>
-            <span>/</span>
-          </>
-        )}
-        <span class="text-slate-800 font-medium truncate max-w-xs sm:max-w-md">
-          {title}
-        </span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: 'Home', href: '/' },
+          ...(parentCategory ? [{ label: parentCategory.name, href: `/category/${parentCategory.slug}` }] : []),
+          ...(primaryCategory ? [{ label: primaryCategory.name, href: `/category/${primaryCategory.slug}` }] : []),
+          { label: title }
+        ]}
+      />
 
       <div class="flex flex-col lg:flex-row gap-8 items-start">
         <!-- Primary Article Container -->

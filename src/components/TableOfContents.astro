@@ -22,9 +22,10 @@ const validHeadings = headings.filter(
 
 {validHeadings.length >= 2 && (
   <nav
-    class={`universal-toc my-8 rounded-xl border border-slate-200/90 bg-slate-50/70 p-5 shadow-2xs transition-colors ${className}`}
+    class={`universal-toc my-8 rounded-xl border border-slate-200/90 bg-slate-50/70 p-5 shadow-2xs transition-colors google-auto-ads-ignore ${className}`}
     aria-label="Table of contents"
     id="article-table-of-contents"
+    data-google-query-id="false"
   >
     <div class="toc-header flex items-center justify-between pb-3 border-b border-slate-200/80">
       <div class="flex items-center gap-2">
@@ -45,17 +46,17 @@ const validHeadings = headings.filter(
         type="button"
         id="toc-toggle-btn"
         class="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-indigo-600 transition-colors cursor-pointer py-1 px-2 rounded hover:bg-slate-200/50"
-        aria-expanded="true"
+        aria-expanded="false"
         aria-controls="toc-list-content"
       >
-        <span id="toc-toggle-label">Hide</span>
-        <svg id="toc-toggle-chevron" class="w-3.5 h-3.5 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <span id="toc-toggle-label">Show</span>
+        <svg id="toc-toggle-chevron" class="w-3.5 h-3.5 transition-transform duration-200 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="18 15 12 9 6 15"></polyline>
         </svg>
       </button>
     </div>
 
-    <div id="toc-list-content" class="toc-content pt-3">
+    <div id="toc-list-content" class="toc-content pt-3 hidden google-auto-ads-ignore" data-google-query-id="false">
       <ol class="toc-list space-y-2 text-sm text-slate-700 list-none p-0 m-0">
         {validHeadings.map((heading, index) => {
           const isH3 = heading.level === 3;

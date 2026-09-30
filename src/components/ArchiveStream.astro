@@ -2,6 +2,7 @@
 import PostCard from './PostCard.astro';
 import Sidebar from './Sidebar.astro';
 import Pagination from './Pagination.astro';
+import Breadcrumb from './Breadcrumb.astro';
 import type { WPPost } from '../types/wp';
 
 export interface BreadcrumbItem {
@@ -56,18 +57,7 @@ const streamPosts = (featuredPost && isFirstPage) ? posts.slice(1) : posts;
 
 <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-10">
   <!-- Breadcrumbs -->
-  <nav class="flex items-center gap-2 text-xs text-slate-500 mb-6 flex-wrap" aria-label="Breadcrumb">
-    {breadcrumbs.map((crumb, idx) => (
-      <>
-        {idx > 0 && <span>/</span>}
-        {crumb.href ? (
-          <a href={crumb.href} class="hover:text-indigo-600 transition">{crumb.label}</a>
-        ) : (
-          <span class="text-slate-900 font-semibold">{crumb.label}</span>
-        )}
-      </>
-    ))}
-  </nav>
+  <Breadcrumb items={breadcrumbs} />
 
   <div class="flex flex-col lg:flex-row gap-8 items-start">
     <!-- Primary Content Stream -->
