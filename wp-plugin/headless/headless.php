@@ -3,7 +3,7 @@
  * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
  * Description: Enterprise Headless WordPress engine for Astro SSR & Cloudflare Edge. Provides automatic granular cache invalidation, admin bar purge controls, native WordPress core zip updates, Rank Math SEO bridge, and subdomain protection.
- * Version: 1.5.4
+ * Version: 1.5.5
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.5.4';
+    const VERSION = '1.5.5';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
     const OPTION_SECRET = 'topnepali_headless_secret';
@@ -742,7 +742,7 @@ class TopNepali_Headless_Plugin {
     }
 
     /**
-     * Permission callback: require secret query param OR logged-in admin
+     * Permission callback: require secret query param, logged-in admin, or valid MCP OAuth token
      */
     public function verify_secret_or_admin($request) {
         if (current_user_can('manage_options')) {
@@ -751,6 +751,28 @@ class TopNepali_Headless_Plugin {
         $provided = $request->get_param('secret');
         if (!empty($provided) && hash_equals($this->get_secret(), $provided)) {
             return true;
+        }
+        // Accept Easy MCP AI OAuth bearer tokens
+        $auth_header = $request->get_header('authorization');
+        if (!empty($auth_header) && stripos($auth_header, 'Bearer wpmcp_') === 0) {
+            $token = substr($auth_header, 7);
+            // Validate via Easy MCP AI plugin's token check
+            if (function_exists('easy_mcp_ai_validate_token')) {
+                $user_id = easy_mcp_ai_validate_token($token);
+                if ($user_id && user_can($user_id, 'manage_options')) {
+                    return true;
+                }
+            }
+            // Fallback: check token directly in options
+            global $wpdb;
+            $token_hash = hash('sha256', $token);
+            $row = $wpdb->get_row($wpdb->prepare(
+                "SELECT user_id FROM {$wpdb->prefix}easy_mcp_ai_tokens WHERE token_hash = %s AND expires_at > NOW() LIMIT 1",
+                $token_hash
+            ));
+            if ($row && user_can((int) $row->user_id, 'manage_options')) {
+                return true;
+            }
         }
         return new WP_Error('rest_forbidden', 'Authentication required', array('status' => 403));
     }
