@@ -3,7 +3,7 @@
  * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
  * Description: Enterprise Headless WordPress engine for Astro SSR & Cloudflare Edge. Provides automatic granular cache invalidation, admin bar purge controls, native WordPress core zip updates, Rank Math SEO bridge, and subdomain protection.
- * Version: 1.5.3
+ * Version: 1.5.4
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.5.3';
+    const VERSION = '1.5.4';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
     const OPTION_SECRET = 'topnepali_headless_secret';
@@ -428,6 +428,35 @@ class TopNepali_Headless_Plugin {
             ),
         ));
 
+        // Dedicated endpoint: /wp-json/headless/v1/404-log
+        register_rest_route('headless/v1', '/404-log', array(
+            'methods'             => 'GET',
+            'callback'            => array($this, 'rest_get_404_log'),
+            'permission_callback' => array($this, 'verify_secret_or_admin'),
+            'args'                => array(
+                'per_page' => array(
+                    'default'           => 100,
+                    'sanitize_callback' => 'absint',
+                ),
+                'page' => array(
+                    'default'           => 1,
+                    'sanitize_callback' => 'absint',
+                ),
+                'orderby' => array(
+                    'default'           => 'times_accessed',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ),
+                'order' => array(
+                    'default'           => 'DESC',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ),
+                'search' => array(
+                    'default'           => '',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ),
+            ),
+        ));
+
         if (!is_user_logged_in()) {
             add_filter('rest_endpoints', function ($endpoints) {
                 if (isset($endpoints['/wp/v2/users'])) {
@@ -710,6 +739,68 @@ class TopNepali_Headless_Plugin {
         }
 
         return new WP_Error('not_found', 'No redirection found for slug', array('status' => 404));
+    }
+
+    /**
+     * Permission callback: require secret query param OR logged-in admin
+     */
+    public function verify_secret_or_admin($request) {
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+        $provided = $request->get_param('secret');
+        if (!empty($provided) && hash_equals($this->get_secret(), $provided)) {
+            return true;
+        }
+        return new WP_Error('rest_forbidden', 'Authentication required', array('status' => 403));
+    }
+
+    /**
+     * REST Callback: /wp-json/headless/v1/404-log
+     * Reads the Rank Math 404 monitor log from wp_rank_math_404_log table
+     */
+    public function rest_get_404_log($request) {
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . 'rank_math_404_log';
+        if ($wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") !== $table_name) {
+            return new WP_Error('no_table', 'Rank Math 404 log table not found. Is the 404 Monitor module enabled?', array('status' => 404));
+        }
+
+        $per_page = min(absint($request->get_param('per_page') ?: 100), 500);
+        $page     = max(absint($request->get_param('page') ?: 1), 1);
+        $offset   = ($page - 1) * $per_page;
+
+        $allowed_orderby = array('times_accessed', 'accessed', 'uri');
+        $orderby = in_array($request->get_param('orderby'), $allowed_orderby, true)
+            ? $request->get_param('orderby')
+            : 'times_accessed';
+
+        $order = strtoupper($request->get_param('order')) === 'ASC' ? 'ASC' : 'DESC';
+
+        $search = $request->get_param('search');
+        $where  = '';
+        if (!empty($search)) {
+            $where = $wpdb->prepare(' WHERE uri LIKE %s OR referer LIKE %s',
+                '%' . $wpdb->esc_like($search) . '%',
+                '%' . $wpdb->esc_like($search) . '%'
+            );
+        }
+
+        $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table_name}{$where}");
+
+        $rows = $wpdb->get_results(
+            "SELECT id, uri, referer, user_agent, times_accessed, accessed FROM {$table_name}{$where} ORDER BY {$orderby} {$order} LIMIT {$per_page} OFFSET {$offset}",
+            ARRAY_A
+        );
+
+        return rest_ensure_response(array(
+            'total'    => $total,
+            'page'     => $page,
+            'per_page' => $per_page,
+            'pages'    => ceil($total / $per_page),
+            'logs'     => $rows ?: array(),
+        ));
     }
 
     /**
