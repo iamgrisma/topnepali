@@ -3,7 +3,7 @@
  * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
  * Description: Enterprise Headless WordPress engine for Astro SSR & Cloudflare Edge. Provides automatic granular cache invalidation, admin bar purge controls, native WordPress core zip updates, Rank Math SEO bridge, and subdomain protection.
- * Version: 1.6.0
+ * Version: 1.6.1
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.6.0';
+    const VERSION = '1.6.1';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
     const OPTION_SECRET = 'topnepali_headless_secret';
@@ -748,43 +748,73 @@ class TopNepali_Headless_Plugin {
     public function rest_get_404_log($request) {
         global $wpdb;
 
-        $table_name = $wpdb->prefix . 'rank_math_404_log';
-        if ($wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") !== $table_name) {
-            return new WP_Error('no_table', 'Rank Math 404 log table not found. Is the 404 Monitor module enabled?', array('status' => 404));
+        $possible_tables = array(
+            $wpdb->prefix . 'rank_math_404_logs',
+            $wpdb->prefix . 'rank_math_404_log',
+        );
+        $table_name = null;
+        foreach ($possible_tables as $pt) {
+            if ($wpdb->get_var("SHOW TABLES LIKE '{$pt}'") === $pt) {
+                $table_name = $pt;
+                break;
+            }
+        }
+
+        if (!$table_name) {
+            $all_tables = $wpdb->get_col("SHOW TABLES LIKE '%" . $wpdb->esc_like($wpdb->prefix) . "%'");
+            $matched = array_values(array_filter($all_tables, function($t) {
+                return stripos($t, '404') !== false || stripos($t, 'rank') !== false;
+            }));
+            return new WP_Error('no_table', 'Rank Math 404 log table not found. Is 404 Monitor enabled?', array(
+                'status' => 404,
+                'available_related_tables' => $matched,
+            ));
         }
 
         $per_page = min(absint($request->get_param('per_page') ?: 100), 500);
         $page     = max(absint($request->get_param('page') ?: 1), 1);
         $offset   = ($page - 1) * $per_page;
 
-        $allowed_orderby = array('times_accessed', 'accessed', 'uri');
-        $orderby = in_array($request->get_param('orderby'), $allowed_orderby, true)
+        $cols = $wpdb->get_col("DESCRIBE {$table_name}");
+        $has_times = in_array('times_accessed', $cols, true);
+        $has_accessed = in_array('accessed', $cols, true);
+        $default_order = $has_times ? 'times_accessed' : ($has_accessed ? 'accessed' : (in_array('id', $cols, true) ? 'id' : $cols[0]));
+
+        $orderby = in_array($request->get_param('orderby'), $cols, true)
             ? $request->get_param('orderby')
-            : 'times_accessed';
+            : $default_order;
 
         $order = strtoupper($request->get_param('order')) === 'ASC' ? 'ASC' : 'DESC';
 
         $search = $request->get_param('search');
         $where  = '';
         if (!empty($search)) {
-            $where = $wpdb->prepare(' WHERE uri LIKE %s OR referer LIKE %s',
-                '%' . $wpdb->esc_like($search) . '%',
-                '%' . $wpdb->esc_like($search) . '%'
-            );
+            $search_like = '%' . $wpdb->esc_like($search) . '%';
+            $search_clauses = array();
+            foreach (array('uri', 'url', 'referer', 'referrer', 'user_agent') as $sc) {
+                if (in_array($sc, $cols, true)) {
+                    $search_clauses[] = $wpdb->prepare("{$sc} LIKE %s", $search_like);
+                }
+            }
+            if (!empty($search_clauses)) {
+                $where = ' WHERE ' . implode(' OR ', $search_clauses);
+            }
         }
 
         $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table_name}{$where}");
 
         $rows = $wpdb->get_results(
-            "SELECT id, uri, referer, user_agent, times_accessed, accessed FROM {$table_name}{$where} ORDER BY {$orderby} {$order} LIMIT {$per_page} OFFSET {$offset}",
+            "SELECT * FROM {$table_name}{$where} ORDER BY {$orderby} {$order} LIMIT {$per_page} OFFSET {$offset}",
             ARRAY_A
         );
 
         return rest_ensure_response(array(
+            'table'    => $table_name,
             'total'    => $total,
             'page'     => $page,
             'per_page' => $per_page,
             'pages'    => ceil($total / $per_page),
+            'columns'  => $cols,
             'logs'     => $rows ?: array(),
         ));
     }
