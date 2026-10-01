@@ -3,7 +3,7 @@
  * Plugin Name: TopNepali Headless Engine
  * Plugin URI: https://topnepali.com
  * Description: Enterprise Headless WordPress engine for Astro SSR & Cloudflare Edge. Provides automatic granular cache invalidation, admin bar purge controls, native WordPress core zip updates, Rank Math SEO bridge, and subdomain protection.
- * Version: 1.5.5
+ * Version: 1.5.6
  * Author: Top Nepali
  * Author URI: https://topnepali.com
  * License: GPL-2.0+
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 class TopNepali_Headless_Plugin {
-    const VERSION = '1.5.5';
+    const VERSION = '1.5.6';
 
     const OPTION_FRONTEND_URL = 'topnepali_headless_frontend_url';
     const OPTION_SECRET = 'topnepali_headless_secret';
@@ -91,6 +91,9 @@ class TopNepali_Headless_Plugin {
 
         // Dynamic Rank Math Tool Redirection Sync
         add_action('init', array($this, 'sync_default_tool_redirections'));
+
+        // Extend Easy MCP AI OAuth authentication to all REST endpoints (not just /easy-mcp-ai/)
+        add_filter('determine_current_user', array($this, 'authenticate_mcp_oauth_token'), 90);
     }
 
     /**
@@ -152,6 +155,82 @@ class TopNepali_Headless_Plugin {
             $this->cached_secret = (string) get_option(self::OPTION_SECRET, 'topnepali_revalidate_secure_token');
         }
         return $this->cached_secret;
+    }
+
+    /**
+     * Authenticate Easy MCP AI OAuth tokens for all REST endpoints.
+     * Easy MCP AI only authenticates tokens on its own /easy-mcp-ai/ namespace.
+     * This extends that authentication globally so headless endpoints can use the same tokens.
+     */
+    public function authenticate_mcp_oauth_token($user_id) {
+        // Skip if already authenticated
+        if ($user_id) {
+            return $user_id;
+        }
+
+        // Only process on REST API requests
+        if (!defined('REST_REQUEST') || !REST_REQUEST) {
+            return $user_id;
+        }
+
+        $auth_header = '';
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $auth_header = $_SERVER['HTTP_AUTHORIZATION'];
+        } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $auth_header = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+        } elseif (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            $auth_header = isset($headers['Authorization']) ? $headers['Authorization'] : '';
+        }
+
+        if (empty($auth_header) || stripos($auth_header, 'Bearer wpmcp_') !== 0) {
+            return $user_id;
+        }
+
+        $token = trim(substr($auth_header, 7));
+
+        // Try Easy MCP AI's own validation if available
+        if (class_exists('\\EasyMcpAi\\Auth\\TokenValidator')) {
+            try {
+                $validator = new \EasyMcpAi\Auth\TokenValidator();
+                $validated_user = $validator->validate($token);
+                if ($validated_user) {
+                    return $validated_user;
+                }
+            } catch (\Exception $e) {}
+        }
+
+        // Fallback: Look up token in wp_options where Easy MCP AI stores OAuth tokens
+        $option_key = 'easy_mcp_ai_oauth_tokens';
+        $tokens = get_option($option_key, array());
+        if (is_array($tokens)) {
+            foreach ($tokens as $stored) {
+                if (isset($stored['access_token_hash'], $stored['user_id'])) {
+                    if (hash_equals($stored['access_token_hash'], hash('sha256', $token))) {
+                        $expires = isset($stored['expires_at']) ? $stored['expires_at'] : 0;
+                        if ($expires > time()) {
+                            return (int) $stored['user_id'];
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback 2: Check if Easy MCP AI uses a custom DB table
+        global $wpdb;
+        $table = $wpdb->prefix . 'easy_mcp_ai_tokens';
+        if ($wpdb->get_var("SHOW TABLES LIKE '{$table}'") === $table) {
+            $token_hash = hash('sha256', $token);
+            $row = $wpdb->get_row($wpdb->prepare(
+                "SELECT user_id FROM {$table} WHERE token_hash = %s AND expires_at > %s LIMIT 1",
+                $token_hash, current_time('mysql', true)
+            ));
+            if ($row) {
+                return (int) $row->user_id;
+            }
+        }
+
+        return $user_id;
     }
 
     /**
