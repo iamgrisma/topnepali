@@ -77,7 +77,9 @@ async function fetchWithCache<T>(
 
   const data = await response.json();
   const result = { data, headers: response.headers };
-  cache.set(url, { data: result, timestamp: now });
+  if (!Array.isArray(data) || data.length > 0) {
+    cache.set(url, { data: result, timestamp: now });
+  }
   return result;
 }
 
@@ -223,6 +225,19 @@ export async function getPostBySlug(slug: string): Promise<WPPost | null> {
     if (Array.isArray(data) && data.length > 0) {
       return data[0];
     }
+    // Fallback for newly published content or cache-lag: bypass subrequest edge cache
+    const freshRes = await fetch(`${url}&_cb=${Date.now()}`, {
+      headers: {
+        'User-Agent': 'TopNepali-Headless-Astro/1.0',
+        'Accept': 'application/json',
+      },
+    });
+    if (freshRes.ok) {
+      const freshData = await freshRes.json();
+      if (Array.isArray(freshData) && freshData.length > 0) {
+        return freshData[0];
+      }
+    }
     return null;
   } catch (err) {
     console.error(`getPostBySlug (${slug}) error:`, err);
@@ -240,6 +255,19 @@ export async function getPageBySlug(slug: string): Promise<WPPage | null> {
     const { data } = await fetchWithCache<WPPage[]>(url, undefined, 3600);
     if (Array.isArray(data) && data.length > 0) {
       return data[0];
+    }
+    // Fallback for newly published content or cache-lag: bypass subrequest edge cache
+    const freshRes = await fetch(`${url}&_cb=${Date.now()}`, {
+      headers: {
+        'User-Agent': 'TopNepali-Headless-Astro/1.0',
+        'Accept': 'application/json',
+      },
+    });
+    if (freshRes.ok) {
+      const freshData = await freshRes.json();
+      if (Array.isArray(freshData) && freshData.length > 0) {
+        return freshData[0];
+      }
     }
     return null;
   } catch (err) {
