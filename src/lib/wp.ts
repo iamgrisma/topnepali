@@ -215,6 +215,119 @@ export async function getPosts(options: GetPostsOptions = {}): Promise<Paginatio
 }
 
 /**
+ * Intelligent relevance-ranked search across the TopNepali archive
+ * Applies weighted scoring for title, slug, taxonomy tags, and excerpt with root stemming
+ */
+export async function searchPosts(query: string, page = 1, perPage = 10): Promise<PaginationResult<WPPost>> {
+  const qTrim = query.trim();
+  if (!qTrim) return { data: [], total: 0, totalPages: 0, currentPage: 1 };
+
+  const base = getWpBaseUrl();
+  const url = `${base}/wp-json/wp/v2/posts?search=${encodeURIComponent(qTrim)}&orderby=relevance&per_page=100&_embed=1&_fields=id,date,modified,slug,status,type,link,title,excerpt,featured_media,categories,tags,reading_time,_links,_embedded`;
+
+  try {
+    const { data: candidates } = await fetchWithCache<WPPost[]>(url, undefined, 300);
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      return { data: [], total: 0, totalPages: 0, currentPage: 1 };
+    }
+
+    const qLower = qTrim.toLowerCase();
+    const qTokens = qLower.split(/\s+/).filter(Boolean);
+    const stem = (w: string) => w.toLowerCase().replace(/(?:ing|ism|ists|ist|ers|er|ies|es|s|ed)$/i, '');
+    const qStems = qTokens.map(stem);
+
+    function scorePost(p: WPPost): number {
+      const title = (p.title?.rendered || '').toLowerCase();
+      const slug = (p.slug || '').toLowerCase().replace(/-/g, ' ');
+      const excerpt = (p.excerpt?.rendered || '').toLowerCase();
+
+      // Collect category and tag names from embedded terms
+      const termNames: string[] = [];
+      if (p._embedded && Array.isArray((p._embedded as any)['wp:term'])) {
+        ((p._embedded as any)['wp:term'] as any[]).forEach((group) => {
+          if (Array.isArray(group)) {
+            group.forEach((t) => {
+              if (t && t.name) termNames.push(String(t.name).toLowerCase());
+            });
+          }
+        });
+      }
+
+      let score = 0;
+
+      // 1. Exact full query in title or slug
+      if (title.includes(qLower)) score += 250;
+      if (slug.includes(qLower)) score += 180;
+
+      // 2. Token-by-token matching with word boundary and stemming
+      let titleTokenMatches = 0;
+      qTokens.forEach((t, idx) => {
+        const s = qStems[idx];
+        const exactWordRegex = new RegExp(`\\b${t}\\b`, 'i');
+        const stemRegex = s.length >= 3 ? new RegExp(`\\b${s}`, 'i') : exactWordRegex;
+
+        if (exactWordRegex.test(title)) {
+          score += 80;
+          titleTokenMatches++;
+        } else if (stemRegex.test(title) || title.includes(t) || (s.length >= 3 && title.includes(s))) {
+          score += 50;
+          titleTokenMatches++;
+        }
+
+        if (exactWordRegex.test(slug)) {
+          score += 60;
+        } else if (stemRegex.test(slug) || slug.includes(t) || (s.length >= 3 && slug.includes(s))) {
+          score += 40;
+        }
+
+        // Tag or category name match
+        const matchedTaxonomy = termNames.some(tn => tn.includes(t) || (s.length >= 3 && tn.includes(s)));
+        if (matchedTaxonomy) {
+          score += 45;
+        }
+
+        if (exactWordRegex.test(excerpt) || (s.length >= 3 && stemRegex.test(excerpt))) {
+          score += 15;
+        }
+      });
+
+      // 3. Completeness bonus: all search tokens found in title or slug
+      if (titleTokenMatches >= qTokens.length) {
+        score += 120;
+      } else if (titleTokenMatches === 0 && !slug.includes(qTokens[0])) {
+        // Severe penalty for accidental body-only match
+        score = score * 0.05;
+      }
+
+      // 4. Subtle recency bias (tie-breaker for articles of equal relevance)
+      const postYear = new Date(p.date).getFullYear();
+      if (postYear >= 2026) score += 5;
+      else if (postYear >= 2024) score += 2;
+
+      return score;
+    }
+
+    const scored = candidates
+      .map(p => ({ post: p, score: scorePost(p) }))
+      .sort((a, b) => b.score - a.score);
+
+    const total = scored.length;
+    const totalPages = Math.ceil(total / perPage);
+    const data = scored.slice((page - 1) * perPage, page * perPage).map(item => item.post);
+
+    return {
+      data,
+      total,
+      totalPages,
+      currentPage: page,
+    };
+  } catch (err) {
+    console.error('searchPosts error:', err);
+    return { data: [], total: 0, totalPages: 0, currentPage: page };
+  }
+}
+
+/**
  * Fetch a single post by slug
  */
 export async function getPostBySlug(slug: string): Promise<WPPost | null> {

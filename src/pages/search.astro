@@ -5,7 +5,7 @@ import Sidebar from '../components/Sidebar.astro';
 import Pagination from '../components/Pagination.astro';
 import EmptyState from '../components/EmptyState.astro';
 import Breadcrumb from '../components/Breadcrumb.astro';
-import { getPosts } from '../lib/wp';
+import { searchPosts } from '../lib/wp';
 
 const query = Astro.url.searchParams.get('q') || Astro.url.searchParams.get('s') || '';
 const pageParam = Astro.url.searchParams.get('page');
@@ -14,11 +14,7 @@ const perPage = 10;
 
 let postsResult = { data: [], total: 0, totalPages: 0, currentPage: 1 };
 if (query.trim()) {
-  postsResult = await getPosts({
-    search: query.trim(),
-    page: currentPage,
-    perPage,
-  });
+  postsResult = await searchPosts(query.trim(), currentPage, perPage);
 }
 
 const { data: posts, total, totalPages } = postsResult;
