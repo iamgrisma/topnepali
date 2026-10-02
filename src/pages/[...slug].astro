@@ -105,6 +105,14 @@ if (!resolvedSeoTitle || !resolvedSeoTitle.replace(/[\(\)\[\]\-\—\s\|\:\,]/g, 
 
 const rawTitle = decodeHtmlEntities(resolvedSeoTitle || cleanPostTitle).replace(/[\u2014\u2013]/g, '|');
 let cleanTitle = (rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} | Top Nepali`).replace(/\((\d{4})\)\s*\(\1\)/gi, '($1)').replace(/[\u2014\u2013]/g, '|');
+cleanTitle = cleanTitle.replace(/(?<![\|\-—]\s*)Top Nepali$/i, '| Top Nepali');
+cleanTitle = cleanTitle.replace(/\s+in\s+(\d{4})\s*\|\s*Top Nepali$/i, (match, yr) => {
+  const prefix = cleanTitle.slice(0, cleanTitle.indexOf(match));
+  if (prefix.includes(`(${yr})`) || prefix.includes(yr)) {
+    return ' | Top Nepali';
+  }
+  return ` in ${yr} | Top Nepali`;
+});
 const trailingYearMatch = cleanTitle.match(/\s+(?:\(?(\d{4})\)?)\s*([—\-\|]\s*Top Nepali)$/i);
 if (trailingYearMatch) {
   const year = trailingYearMatch[1];
@@ -114,7 +122,7 @@ if (trailingYearMatch) {
     cleanTitle = `${prefix} ${sepAndSite}`;
   }
 }
-const title = cleanTitle.replace(/[\u2014\u2013]/g, '|');
+const title = cleanTitle.replace(/[\u2014\u2013]/g, '|').replace(/\s+/g, ' ').trim();
 
 function cleanMetaDesc(text: string, maxLen = 180): string {
   const clean = text.replace(/\s+/g, ' ').trim();
