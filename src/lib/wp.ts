@@ -580,21 +580,55 @@ export function getPostAuthor(post: WPPost): { name: string; avatar?: string; ur
 }
 
 export function getPostCategories(post: WPPost): { id: number; name: string; slug: string }[] {
-  const terms = post._embedded?.['wp:term']?.[0] || [];
-  return terms.map(t => ({
-    id: t.id,
-    name: decodeHtmlEntities(t.name),
-    slug: t.slug,
-  }));
+  const allGroups = post._embedded?.['wp:term'] || [];
+  const categories: { id: number; name: string; slug: string }[] = [];
+  for (const group of allGroups) {
+    if (Array.isArray(group)) {
+      for (const t of group) {
+        if (t.taxonomy === 'category') {
+          categories.push({
+            id: t.id,
+            name: decodeHtmlEntities(t.name),
+            slug: t.slug,
+          });
+        }
+      }
+    }
+  }
+  if (categories.length === 0 && allGroups[0]) {
+    return allGroups[0].map(t => ({
+      id: t.id,
+      name: decodeHtmlEntities(t.name),
+      slug: t.slug,
+    }));
+  }
+  return categories;
 }
 
 export function getPostTags(post: WPPost): { id: number; name: string; slug: string }[] {
-  const terms = post._embedded?.['wp:term']?.[1] || [];
-  return terms.map(t => ({
-    id: t.id,
-    name: decodeHtmlEntities(t.name),
-    slug: t.slug,
-  }));
+  const allGroups = post._embedded?.['wp:term'] || [];
+  const tags: { id: number; name: string; slug: string }[] = [];
+  for (const group of allGroups) {
+    if (Array.isArray(group)) {
+      for (const t of group) {
+        if (t.taxonomy === 'post_tag') {
+          tags.push({
+            id: t.id,
+            name: decodeHtmlEntities(t.name),
+            slug: t.slug,
+          });
+        }
+      }
+    }
+  }
+  if (tags.length === 0 && allGroups[1]) {
+    return allGroups[1].map(t => ({
+      id: t.id,
+      name: decodeHtmlEntities(t.name),
+      slug: t.slug,
+    }));
+  }
+  return tags;
 }
 
 export function formatDate(dateStr: string): string {

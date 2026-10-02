@@ -157,6 +157,12 @@ const canonicalUrl = rawCanonical
 const readingTime = item ? estimateReadingTime(item) : '';
 const publishedTime = post?.date;
 const modifiedTime = post?.modified;
+const isModified = Boolean(
+  publishedTime &&
+  modifiedTime &&
+  new Date(modifiedTime).getTime() - new Date(publishedTime).getTime() > 86400000 &&
+  formatDate(modifiedTime) !== formatDate(publishedTime)
+);
 const robots = typeof item?.seo?.robots === 'string' ? item.seo.robots : null;
 
 const headHtml = item?.head
@@ -266,9 +272,17 @@ const tocHeadings = isArticle ? extractTocHeadings(contentHtml) : [];
                   <span class="font-semibold text-slate-900 block">
                     {author.name}
                   </span>
-                  <div class="flex items-center gap-2 text-[11px] text-slate-400">
-                    <time datetime={post.date}>{formatDate(post.date)}</time>
-                    <span>&bull;</span>
+                  <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
+                    <time datetime={post.date}>Published {formatDate(post.date)}</time>
+                    {isModified && (
+                      <>
+                        <span class="text-slate-300">&bull;</span>
+                        <time datetime={post.modified} class="text-emerald-700 font-medium bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60" title={`Last updated on ${formatDate(post.modified)}`}>
+                          Updated {formatDate(post.modified)}
+                        </time>
+                      </>
+                    )}
+                    <span class="text-slate-300">&bull;</span>
                     <span>{readingTime}</span>
                   </div>
                 </div>
@@ -317,15 +331,19 @@ const tocHeadings = isArticle ? extractTocHeadings(contentHtml) : [];
           <div class="entry-content mb-8" set:html={contentHtml} />
 
           {tags.length > 0 && (
-            <div class="pt-6 border-t border-slate-100 mb-8">
-              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2.5">
-                Related Tags
-              </span>
-              <div class="flex flex-wrap gap-1.5">
+            <div class="pt-6 border-t border-slate-200/70 mb-8">
+              <div class="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                  <line x1="7" y1="7" x2="7.01" y2="7" />
+                </svg>
+                <span>Related Tags</span>
+              </div>
+              <div class="flex flex-wrap gap-2">
                 {tags.map((t) => (
                   <a
                     href={`/tag/${t.slug}`}
-                    class="px-2.5 py-1 text-xs rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                    class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md bg-slate-100/90 text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 border border-slate-200/60 transition"
                   >
                     #{t.name}
                   </a>
