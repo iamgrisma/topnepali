@@ -46,34 +46,53 @@ if (fs.existsSync(path.join(rootDir, 'public'))) {
   }
 });
 
-// 2. Create _worker.js pointing to server/entry.mjs
+// 2. Create _worker.js pointing to server/entry.mjs with ASSETS fallback
 const workerFile = path.join(distDir, '_worker.js');
 const workerContent = `import serverEntry from './server/entry.mjs';
 
 export default {
   async fetch(req, env, ctx) {
     globalThis.__CF_ENV__ = env;
+    if (env.ASSETS) {
+      const url = new URL(req.url);
+      if (
+        url.pathname === '/favicon.ico' ||
+        url.pathname.startsWith('/favicon') ||
+        url.pathname.startsWith('/apple-touch-icon') ||
+        url.pathname === '/robots.txt' ||
+        url.pathname === '/ads.txt' ||
+        url.pathname.endsWith('.ico') ||
+        url.pathname.endsWith('.png') ||
+        url.pathname.endsWith('.webp')
+      ) {
+        const assetRes = await env.ASSETS.fetch(req);
+        if (assetRes.status < 400) return assetRes;
+      }
+    }
     return serverEntry.fetch(req, env, ctx);
   }
 };
 `;
 fs.writeFileSync(workerFile, workerContent);
-console.log('[prepare-pages] Created dist/_worker.js delegating to serverEntry');
+console.log('[prepare-pages] Created dist/_worker.js delegating to serverEntry with static asset support');
 
-// 3. Ensure _routes.json excludes /_astro/* for optimal static asset serving
+// 3. Ensure _routes.json excludes static assets for optimal Cloudflare Edge serving
 const routesJsonFile = path.join(distDir, '_routes.json');
-if (fs.existsSync(routesJsonFile)) {
-  try {
-    const routes = JSON.parse(fs.readFileSync(routesJsonFile, 'utf8'));
-    if (Array.isArray(routes.exclude) && !routes.exclude.includes('/_astro/*')) {
-      routes.exclude.unshift('/_astro/*');
-      fs.writeFileSync(routesJsonFile, JSON.stringify(routes, null, 2));
-      console.log('[prepare-pages] Added /_astro/* to _routes.json exclude rules');
-    }
-  } catch (err) {
-    console.warn('[prepare-pages] Failed to update _routes.json:', err.message);
-  }
-}
+const routes = {
+  version: 1,
+  include: ['/*'],
+  exclude: [
+    '/_astro/*',
+    '/favicon.ico',
+    '/favicon-16x16.png',
+    '/favicon-32x32.png',
+    '/apple-touch-icon.png',
+    '/robots.txt',
+    '/ads.txt'
+  ]
+};
+fs.writeFileSync(routesJsonFile, JSON.stringify(routes, null, 2));
+console.log('[prepare-pages] Created dist/_routes.json with static asset exclusions');
 
 // 4. Update .assetsignore so Cloudflare Pages doesn't serve _worker.js and server files as raw downloads
 const assetsIgnoreFile = path.join(distDir, '.assetsignore');
