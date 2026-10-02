@@ -36,14 +36,16 @@ export async function generateRssFeed(feedPath: string = 'rss.xml'): Promise<Res
   const items = postsResult.data.map((post) => {
     const postUrl = `${siteUrl}/${post.slug}`;
     const pubDate = new Date(post.date_gmt || post.date).toUTCString();
-    const rawTitle = getPostTitle(post) || 'Untitled';
+    const rawTitle = (getPostTitle(post) || 'Untitled').replace(/[\u2014\u2013]/g, '|');
     const title = escapeXml(rawTitle);
     const author = getPostAuthor(post);
-    const authorName = escapeXml(author.name || 'Top Nepali Editorial');
+    const authorName = escapeXml((author.name || 'Top Nepali Editorial').replace(/[\u2014\u2013]/g, '|'));
     const categories = getPostCategories(post);
     const featuredImage = getPostFeaturedImage(post);
 
-    const rawExcerpt = stripHtml(post.excerpt?.rendered || post.content?.rendered || '').slice(0, 400);
+    const rawExcerpt = stripHtml(post.excerpt?.rendered || post.content?.rendered || '')
+      .replace(/[\u2014\u2013]/g, '-')
+      .slice(0, 400);
     const cleanExcerpt = escapeXml(rawExcerpt);
 
     // Categorization
