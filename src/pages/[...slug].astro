@@ -293,17 +293,17 @@ const tocHeadings = isArticle ? extractTocHeadings(contentHtml) : [];
           )}
 
           {featuredImg && (
-            <figure class="mb-8 rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+            <figure class="mb-8 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex flex-col items-center justify-center p-1 sm:p-2">
               <img
                 src={featuredImg.url}
                 alt={featuredImg.alt}
-                class="w-full h-auto max-h-[480px] object-cover mx-auto"
+                class="w-auto max-w-full h-auto max-h-[520px] object-contain mx-auto rounded"
                 loading="eager"
                 fetchpriority="high"
                 decoding="async"
               />
               {featuredImg.alt && featuredImg.alt !== title && (
-                <figcaption class="p-2 text-center text-xs text-slate-400">
+                <figcaption class="p-2 text-center text-xs text-slate-500">
                   {featuredImg.alt}
                 </figcaption>
               )}
