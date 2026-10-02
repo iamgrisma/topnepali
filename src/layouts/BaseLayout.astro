@@ -43,6 +43,8 @@ const canonical = canonicalUrl || canonicalProp || new URL(Astro.url.pathname, S
 const gaId = GA_ID;
 const adsenseId = ADSENSE_ID;
 const clarityId = CLARITY_ID;
+const cleanTitle = (title || '').replace(/[\u2014\u2013]/g, '|');
+const cleanDescription = (description || '').replace(/[\u2014\u2013]/g, '-');
 ---
 
 <!doctype html>
@@ -57,20 +59,20 @@ const clarityId = CLARITY_ID;
     <meta name="twitter:site" content="@topnepalicom" />
 
     {headHtml ? (
-      /* Directly render Rank Math's exact head HTML from WordPress */
-      <Fragment set:html={headHtml} />
+      /* Directly render Rank Math's exact head HTML from WordPress (sanitizing em dashes to vertical pipes) */
+      <Fragment set:html={headHtml.replace(/[\u2014\u2013]/g, '|')} />
     ) : (
       /* Fallback native SEO tags & Google JSON-LD schema */
       <>
-        <title>{title}</title>
-        <meta name="description" content={description} />
+        <title>{cleanTitle}</title>
+        <meta name="description" content={cleanDescription} />
         <link rel="canonical" href={canonical} />
         {robots && <meta name="robots" content={robots} />}
 
         <!-- Open Graph -->
         <meta property="og:site_name" content="Top Nepali" />
-        <meta property="og:title" content={title} />
-        <meta property="og:description" content={description} />
+        <meta property="og:title" content={cleanTitle} />
+        <meta property="og:description" content={cleanDescription} />
         <meta property="og:type" content={type} />
         <meta property="og:url" content={canonical} />
         {image && <meta property="og:image" content={image} />}

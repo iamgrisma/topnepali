@@ -103,18 +103,18 @@ if (!resolvedSeoTitle || !resolvedSeoTitle.replace(/[\(\)\[\]\-\—\s\|\:\,]/g, 
   resolvedSeoTitle = cleanPostTitle;
 }
 
-const rawTitle = decodeHtmlEntities(resolvedSeoTitle || cleanPostTitle);
-let cleanTitle = (rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} | Top Nepali`).replace(/\((\d{4})\)\s*\(\1\)/gi, '($1)');
+const rawTitle = decodeHtmlEntities(resolvedSeoTitle || cleanPostTitle).replace(/[\u2014\u2013]/g, '|');
+let cleanTitle = (rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} | Top Nepali`).replace(/\((\d{4})\)\s*\(\1\)/gi, '($1)').replace(/[\u2014\u2013]/g, '|');
 const trailingYearMatch = cleanTitle.match(/\s+(?:\(?(\d{4})\)?)\s*([—\-\|]\s*Top Nepali)$/i);
 if (trailingYearMatch) {
   const year = trailingYearMatch[1];
-  const sepAndSite = trailingYearMatch[2];
+  const sepAndSite = trailingYearMatch[2].replace(/[\u2014\u2013]/g, '|');
   const prefix = cleanTitle.slice(0, trailingYearMatch.index);
   if (prefix.includes(year)) {
     cleanTitle = `${prefix} ${sepAndSite}`;
   }
 }
-const title = cleanTitle;
+const title = cleanTitle.replace(/[\u2014\u2013]/g, '|');
 
 function cleanMetaDesc(text: string, maxLen = 180): string {
   const clean = text.replace(/\s+/g, ' ').trim();
@@ -225,7 +225,7 @@ const tocHeadings = isArticle ? extractTocHeadings(contentHtml) : [];
           { label: 'Home', href: '/' },
           ...(parentCategory ? [{ label: parentCategory.name, href: `/category/${parentCategory.slug}` }] : []),
           ...(primaryCategory ? [{ label: primaryCategory.name, href: `/category/${primaryCategory.slug}` }] : []),
-          { label: title }
+          { label: cleanPostTitle }
         ]}
       />
 
