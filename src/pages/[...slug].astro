@@ -52,22 +52,27 @@ if (isKnownPage) {
   }
 }
 
-// In-memory alias / redirect rewrite: If Rank Math configured a redirection, fetch target in-memory with zero HTTP redirect hops
-let redirectTarget = (post || page)?.seo?.redirect_url;
+// Handle explicit Rank Math redirects configured on deleted, moved, or alias URLs
 if (!post && !page) {
   const rmRedirect = await getRankMathRedirection(cleanSlug);
-  redirectTarget = rmRedirect?.redirect_url;
-  if (redirectTarget) {
-    const cleanTargetSlug = redirectTarget
-      .replace(/^https?:\/\/(?:wp\.)?topnepali\.com/i, '')
-      .replace(/^\/+|\/+$/g, '');
-    if (cleanTargetSlug && cleanTargetSlug !== cleanSlug) {
-      post = await getPostBySlug(cleanTargetSlug);
-      if (!post) {
-        page = await getPageBySlug(cleanTargetSlug);
-      }
-    }
+  if (rmRedirect && rmRedirect.redirect_url) {
+    const rawTarget = rmRedirect.redirect_url;
+    const targetUrl = rawTarget.startsWith('http')
+      ? rawTarget.replace(/^https?:\/\/(?:wp\.)?topnepali\.com/i, 'https://topnepali.com')
+      : `https://topnepali.com/${rawTarget.replace(/^\/+|\/+$/g, '')}`;
+
+    return Astro.redirect(targetUrl, rmRedirect.redirect_type || 301);
   }
+}
+
+// Handle explicit redirect configured on existing post/page in Rank Math SEO settings
+const postRedirect = (post || page)?.seo?.redirect_url;
+if (postRedirect) {
+  const targetUrl = postRedirect.startsWith('http')
+    ? postRedirect.replace(/^https?:\/\/(?:wp\.)?topnepali\.com/i, 'https://topnepali.com')
+    : `https://topnepali.com/${postRedirect.replace(/^\/+|\/+$/g, '')}`;
+
+  return Astro.redirect(targetUrl, 301);
 }
 
 if (!post && !page) {
@@ -143,10 +148,11 @@ const rawOgImage = (item?.slug === 'income-tax-rate-in-nepal' && featuredImg?.ur
   : (item?.seo?.og_image || featuredImg?.url || 'https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png');
 const ogImage = rawOgImage.replace(/https?:\/\/wp\.topnepali\.com/gi, 'https://topnepali.com');
 
+const canonicalSlug = post?.slug || page?.slug || cleanSlug;
 const rawCanonical = item?.seo?.canonical_url;
 const canonicalUrl = rawCanonical
   ? rawCanonical.replace(/https?:\/\/wp\.topnepali\.com/gi, 'https://topnepali.com')
-  : (item ? `https://topnepali.com/${cleanSlug}` : undefined);
+  : (item ? `https://topnepali.com/${canonicalSlug}` : undefined);
 
 const readingTime = item ? estimateReadingTime(item) : '';
 const publishedTime = post?.date;
