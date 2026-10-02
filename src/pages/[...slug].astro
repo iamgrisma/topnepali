@@ -95,7 +95,7 @@ const cleanPostTitle = item ? getPostTitle(item) : 'Page Not Found';
 let resolvedSeoTitle = resolveRankMathVariables(item?.seo?.title, {
   title: cleanPostTitle,
   siteName: 'Top Nepali',
-  separator: '—',
+  separator: '|',
   category: primaryCategory?.name,
 });
 
@@ -104,7 +104,7 @@ if (!resolvedSeoTitle || !resolvedSeoTitle.replace(/[\(\)\[\]\-\—\s\|\:\,]/g, 
 }
 
 const rawTitle = decodeHtmlEntities(resolvedSeoTitle || cleanPostTitle);
-let cleanTitle = (rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} — Top Nepali`).replace(/\((\d{4})\)\s*\(\1\)/gi, '($1)');
+let cleanTitle = (rawTitle.includes('Top Nepali') ? rawTitle : `${rawTitle} | Top Nepali`).replace(/\((\d{4})\)\s*\(\1\)/gi, '($1)');
 const trailingYearMatch = cleanTitle.match(/\s+(?:\(?(\d{4})\)?)\s*([—\-\|]\s*Top Nepali)$/i);
 if (trailingYearMatch) {
   const year = trailingYearMatch[1];
@@ -130,7 +130,7 @@ const resolvedSeoDesc = resolveRankMathVariables(item?.seo?.description, {
   title: cleanPostTitle,
   excerpt: fallbackExcerpt,
   siteName: 'Top Nepali',
-  separator: '—',
+  separator: '|',
   category: primaryCategory?.name,
 });
 // When Rank Math description is identical to title or unconfigured, fall back to rich author excerpt
@@ -178,7 +178,7 @@ const tocHeadings = isArticle ? extractTocHeadings(contentHtml) : [];
 ---
 
 {(!post && !page) ? (
-  <BaseLayout title="404 — Page Not Found | Top Nepali" description="The page you were looking for could not be found." robots="noindex, nofollow">
+  <BaseLayout title="404: Page Not Found | Top Nepali" description="The page you were looking for could not be found." robots="noindex, nofollow">
     <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-8">
       <Breadcrumb
         items={[
@@ -190,7 +190,7 @@ const tocHeadings = isArticle ? extractTocHeadings(contentHtml) : [];
       <div class="flex flex-col lg:flex-row gap-8 items-start">
         <div class="w-full lg:w-[68%] min-w-0">
           <EmptyState
-            title="404 — Page Not Found"
+            title="404: Page Not Found"
             message={`The article or page "${cleanSlug}" could not be located in the TopNepali digital archive. It may have been moved, renamed, or is temporarily unavailable.`}
             icon="file-question"
             primaryAction={{ label: 'Return to Portal', href: '/' }}

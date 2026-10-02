@@ -131,7 +131,7 @@ const streamPosts = (featuredPost && isFirstPage) ? posts.slice(1) : posts;
       <div class="flex items-center justify-between pb-3 mb-6 border-b-2 border-slate-200">
         <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
-          <span>{isFirstPage ? 'Recent Publications' : `Articles — Page ${currentPage}`}</span>
+          <span>{isFirstPage ? 'Recent Publications' : `Articles: Page ${currentPage}`}</span>
         </h2>
         <span class="text-xs text-slate-500">
           Page {currentPage} of {totalPages || 1}

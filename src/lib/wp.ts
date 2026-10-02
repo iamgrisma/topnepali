@@ -523,8 +523,8 @@ export function decodeHtmlEntities(text: string): string {
   for (let i = 0; i < 3; i++) {
     const prev = str;
     str = str
-      .replace(/&#8211;|&ndash;/g, '–')
-      .replace(/&#8212;|&mdash;/g, '—')
+      .replace(/&#8211;|&ndash;/g, '-')
+      .replace(/&#8212;|&mdash;/g, ' - ')
       .replace(/&#8216;|&lsquo;/g, "'")
       .replace(/&#8217;|&rsquo;/g, "'")
       .replace(/&#8220;|&ldquo;/g, '"')
@@ -749,7 +749,7 @@ export function resolveRankMathVariables(
 
   const now = new Date();
   const siteName = context.siteName || 'Top Nepali';
-  const sep = context.separator || '—';
+  const sep = context.separator || '|';
   const cleanExcerpt = context.excerpt ? decodeHtmlEntities(stripHtml(context.excerpt)).trim() : '';
 
   let resolved = template
