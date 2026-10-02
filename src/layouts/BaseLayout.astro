@@ -19,6 +19,8 @@ interface Props {
   section?: string;
   robots?: string | null;
   preloadImage?: string;
+  categoryFeedUrl?: string;
+  categoryFeedTitle?: string;
 }
 
 const {
@@ -35,6 +37,8 @@ const {
   section,
   robots,
   preloadImage,
+  categoryFeedUrl,
+  categoryFeedTitle,
 } = Astro.props;
 
 import { SITE_URL, GA_ID, ADSENSE_ID, CLARITY_ID } from '../config';
@@ -142,6 +146,9 @@ const cleanDescription = (description || '').replace(/[\u2014\u2013]/g, '-');
 
     <link rel="alternate" type="application/rss+xml" title="Top Nepali RSS Feed" href="/rss.xml" />
     <link rel="alternate" type="application/rss+xml" title="Top Nepali Feed" href="/feed" />
+    {categoryFeedUrl && (
+      <link rel="alternate" type="application/rss+xml" title={categoryFeedTitle || 'Category Feed'} href={categoryFeedUrl} />
+    )}
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
 
     <!-- Favicon -->

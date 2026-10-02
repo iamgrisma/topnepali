@@ -63,6 +63,8 @@ const topicChips = otherCategories.map((c) => ({
   description={category?.description || `Verified articles, news, and official updates categorized under ${category?.name || cleanSlug} on Top Nepali.`}
   canonicalUrl={currentPage > 1 ? `https://topnepali.com/category/${cleanSlug}?page=${currentPage}` : `https://topnepali.com/category/${cleanSlug}`}
   robots={!category ? 'noindex, nofollow' : undefined}
+  categoryFeedUrl={category ? `/category/${cleanSlug}/feed` : undefined}
+  categoryFeedTitle={category ? `${category.name} Feed | Top Nepali` : undefined}
 >
   {!category ? (
     <div class="max-w-[1280px] mx-auto px-4 py-6 sm:py-10">

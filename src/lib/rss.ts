@@ -1,4 +1,13 @@
-import { getPosts, getSiteInfo, getPostTitle, getPostFeaturedImage, getPostCategories, getPostAuthor, stripHtml } from './wp';
+import {
+  getPosts,
+  getSiteInfo,
+  getPostTitle,
+  getPostFeaturedImage,
+  getPostCategories,
+  getPostAuthor,
+  getCategoryBySlug,
+  stripHtml,
+} from './wp';
 import { SITE_URL } from '../config';
 
 function escapeXml(unsafe: string): string {
@@ -18,16 +27,43 @@ function getMimeType(url: string): string {
   return 'image/jpeg';
 }
 
+export interface RssFeedOptions {
+  feedPath?: string;
+  categorySlug?: string;
+}
+
 /**
  * Universal RSS Feed Generator for Top Nepali
  * Provides full compatibility with Pinterest auto-publishers, Feedly, and RSS readers.
+ * Supports both global site feeds and category-specific RSS feeds.
  */
-export async function generateRssFeed(feedPath: string = 'rss.xml'): Promise<Response> {
+export async function generateRssFeed(optionsOrPath: string | RssFeedOptions = 'rss.xml'): Promise<Response> {
+  const options = typeof optionsOrPath === 'string' ? { feedPath: optionsOrPath } : optionsOrPath;
+  const feedPath = (options.feedPath || 'rss.xml').replace(/^\/+/, '');
   const siteUrl = SITE_URL.replace(/\/+$/, '');
   const siteInfo = getSiteInfo();
 
+  let categoryId: number | undefined;
+  let channelTitle = escapeXml(siteInfo.name || 'Top Nepali');
+  let channelLink = siteUrl;
+  let channelDescription = escapeXml(siteInfo.description || 'Covering Top Nepali News, Updates, Educational Information, and Digital Guides');
+
+  if (options.categorySlug) {
+    const category = await getCategoryBySlug(options.categorySlug);
+    if (!category) {
+      return new Response('Category Not Found', { status: 404 });
+    }
+    categoryId = category.id;
+    channelTitle = `${escapeXml(category.name)} | Top Nepali`;
+    channelLink = `${siteUrl}/category/${category.slug}`;
+    channelDescription = escapeXml(
+      category.description || `Latest articles, rankings, and updates filed under ${category.name} on Top Nepali`
+    );
+  }
+
   // Fetch the latest 30 published articles
   const postsResult = await getPosts({
+    category: categoryId,
     perPage: 30,
     page: 1,
     fields: 'id,date,date_gmt,modified,slug,status,type,link,title,excerpt,content,featured_media,categories,tags,_links,_embedded',
@@ -82,7 +118,6 @@ ${categoryTags ? categoryTags + '\n' : ''}${mediaTags ? mediaTags + '\n' : ''}  
     </item>`;
   }).join('\n');
 
-  const cleanFeedPath = feedPath.replace(/^\/+/, '');
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"
   xmlns:content="http://purl.org/rss/1.0/modules/content/"
@@ -94,18 +129,18 @@ ${categoryTags ? categoryTags + '\n' : ''}${mediaTags ? mediaTags + '\n' : ''}  
   xmlns:media="http://search.yahoo.com/mrss/"
 >
   <channel>
-    <title>${escapeXml(siteInfo.name || 'Top Nepali')}</title>
-    <atom:link href="${siteUrl}/${cleanFeedPath}" rel="self" type="application/rss+xml"/>
-    <link>${siteUrl}</link>
-    <description>${escapeXml(siteInfo.description || 'Covering Top Nepali News, Updates, Educational Information, and Digital Guides')}</description>
+    <title>${channelTitle}</title>
+    <atom:link href="${siteUrl}/${feedPath}" rel="self" type="application/rss+xml"/>
+    <link>${channelLink}</link>
+    <description>${channelDescription}</description>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <language>en</language>
     <sy:updatePeriod>hourly</sy:updatePeriod>
     <sy:updateFrequency>1</sy:updateFrequency>
     <image>
       <url>https://objects.topnepali.com/wp-content/uploads/2026/09/Top-Nepali-Logo.png</url>
-      <title>${escapeXml(siteInfo.name || 'Top Nepali')}</title>
-      <link>${siteUrl}</link>
+      <title>${channelTitle}</title>
+      <link>${channelLink}</link>
       <width>144</width>
       <height>144</height>
     </image>
