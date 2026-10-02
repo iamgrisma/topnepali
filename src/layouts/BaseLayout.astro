@@ -1,5 +1,5 @@
 ---
-// BaseLayout.astro — Root layout matching TopNepali / GeneratePress visual architecture
+// BaseLayout.astro | Root layout matching TopNepali / GeneratePress visual architecture
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import SearchModal from '../components/SearchModal.astro';
@@ -141,6 +141,7 @@ const cleanDescription = (description || '').replace(/[\u2014\u2013]/g, '-');
     )}
 
     <link rel="alternate" type="application/rss+xml" title="Top Nepali RSS Feed" href="/rss.xml" />
+    <link rel="alternate" type="application/rss+xml" title="Top Nepali Feed" href="/feed" />
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
 
     <!-- Favicon -->

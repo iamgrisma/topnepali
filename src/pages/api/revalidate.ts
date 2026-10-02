@@ -94,6 +94,10 @@ export const POST: APIRoute = async (context) => {
       purgeUrls.push(`${base}/`);
       purgeUrls.push(`${base}`);
       purgeUrls.push(`${base}/rss.xml`);
+      purgeUrls.push(`${base}/feed`);
+      purgeUrls.push(`${base}/feed/`);
+      purgeUrls.push(`${base}/rss`);
+      purgeUrls.push(`${base}/rss/`);
       purgeUrls.push(`${base}/sitemap.xml`);
       purgeUrls.push(`${base}/api/posts`);
       purgeUrls.push(`${base}/blogs`);
